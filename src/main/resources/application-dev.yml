@@ -8,5 +8,5 @@ spring:
 
 logging:
   level:
-    pe.betaagroindustrial.avance: DEBUG
-    org.hibernate.SQL: DEBUG
+    "[pe.betaagroindustrial.avance]": DEBUG
+    "[org.hibernate.SQL]": DEBUG

@@ -1,14 +1,15 @@
 package pe.betaagroindustrial.avance.common.exception;
 
-import jakarta.servlet.http.HttpServletRequest;
+import java.time.OffsetDateTime;
+import java.util.List;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-import java.time.OffsetDateTime;
-import java.util.List;
+import jakarta.servlet.http.HttpServletRequest;
 
 /**
  * Punto unico de traduccion de excepciones a respuestas HTTP consistentes.
@@ -24,7 +25,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(BusinessRuleException.class)
     public ResponseEntity<ErrorResponse> handleBusinessRule(BusinessRuleException ex, HttpServletRequest req) {
-        return build(HttpStatus.UNPROCESSABLE_ENTITY, ex.getMessage(), req, null);
+        return build(HttpStatus.UNPROCESSABLE_CONTENT, ex.getMessage(), req, null);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

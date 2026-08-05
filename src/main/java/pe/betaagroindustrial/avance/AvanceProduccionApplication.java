@@ -2,7 +2,9 @@ package pe.betaagroindustrial.avance;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
+
+import pe.betaagroindustrial.avance.config.AppProperties;
 
 /**
  * Punto de entrada de la aplicacion.
@@ -12,7 +14,7 @@ import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
  * multi-producto (esparrago, uva, granada) sin cambios de esquema.
  */
 @SpringBootApplication
-@EnableJpaAuditing(auditorAwareRef = "auditorAware")
+@EnableConfigurationProperties(AppProperties.class)
 public class AvanceProduccionApplication {
 
     public static void main(String[] args) {

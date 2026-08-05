@@ -9,9 +9,9 @@ spring:
       ddl-auto: validate
     properties:
       hibernate:
-        format_sql: true
+        "[format_sql]": true
         jdbc:
-          time_zone: America/Lima
+          "[time_zone]": America/Lima
   flyway:
     enabled: true
     baseline-on-migrate: true
