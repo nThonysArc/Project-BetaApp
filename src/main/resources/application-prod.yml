@@ -1,0 +1,21 @@
+spring:
+  datasource:
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
+    hikari:
+      maximum-pool-size: 10
+  jpa:
+    show-sql: false
+
+logging:
+  level:
+    pe.betaagroindustrial.avance: INFO
+    org.hibernate.SQL: WARN
+
+# Railway expone la variable DATABASE_URL en formato postgres://user:pass@host:port/db
+# Spring necesita el prefijo jdbc:. En Railway, definir estas 3 variables de entorno
+# en el servicio backend (Settings > Variables), mapeando desde el plugin de Postgres:
+#   SPRING_DATASOURCE_URL      = jdbc:postgresql://${{Postgres.PGHOST}}:${{Postgres.PGPORT}}/${{Postgres.PGDATABASE}}
+#   SPRING_DATASOURCE_USERNAME = ${{Postgres.PGUSER}}
+#   SPRING_DATASOURCE_PASSWORD = ${{Postgres.PGPASSWORD}}
