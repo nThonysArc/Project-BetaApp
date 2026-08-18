@@ -10,11 +10,13 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 import jakarta.servlet.http.HttpServletRequest;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Punto unico de traduccion de excepciones a respuestas HTTP consistentes.
  * Evita que cada Controller tenga su propio try/catch disperso.
  */
+@Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
@@ -44,6 +46,12 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGeneric(Exception ex, HttpServletRequest req) {
+        // CRITICO: sin este log, cualquier excepcion no mapeada explicitamente
+        // se pierde por completo - el cliente ve un mensaje generico (correcto,
+        // por seguridad) pero en el servidor no queda ningun rastro de que
+        // paso ni por que. Este log es la unica forma de diagnosticar estos
+        // casos despues.
+        log.error("Excepcion no manejada en {} {}: {}", req.getMethod(), req.getRequestURI(), ex.getMessage(), ex);
         return build(HttpStatus.INTERNAL_SERVER_ERROR, "Ocurrio un error inesperado. Intente nuevamente.", req, null);
     }
 
