@@ -20,7 +20,9 @@ WORKDIR /app
 RUN addgroup --system spring && adduser --system --ingroup spring spring
 USER spring:spring
 
-COPY --from=build /app/target/avance-produccion.jar app.jar
+# Wildcard en vez de nombre exacto: evita que el build se rompa cada vez
+# que cambie la version en pom.xml o el finalName del jar generado.
+COPY --from=build /app/target/*.jar app.jar
 
 EXPOSE 8080
 
