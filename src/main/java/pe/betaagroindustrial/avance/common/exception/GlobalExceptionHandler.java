@@ -3,6 +3,7 @@ package pe.betaagroindustrial.avance.common.exception;
 import java.time.OffsetDateTime;
 import java.util.List;
 
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -44,13 +45,19 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.UNAUTHORIZED, "Email o contrasena incorrectos", req, null);
     }
 
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ErrorResponse> handleDataIntegrityViolation(
+            DataIntegrityViolationException ex, HttpServletRequest req) {
+        // Violaciones de constraint (unique, FK, etc). No exponemos el detalle
+        // tecnico de Postgres al cliente, pero si dejamos claro que es un
+        // conflicto de datos, no un fallo de servidor.
+        log.warn("Violacion de integridad de datos en {} {}: {}", req.getMethod(), req.getRequestURI(), ex.getMessage());
+        return build(HttpStatus.CONFLICT,
+                "La operacion no se pudo completar porque entra en conflicto con datos existentes.", req, null);
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGeneric(Exception ex, HttpServletRequest req) {
-        // CRITICO: sin este log, cualquier excepcion no mapeada explicitamente
-        // se pierde por completo - el cliente ve un mensaje generico (correcto,
-        // por seguridad) pero en el servidor no queda ningun rastro de que
-        // paso ni por que. Este log es la unica forma de diagnosticar estos
-        // casos despues.
         log.error("Excepcion no manejada en {} {}: {}", req.getMethod(), req.getRequestURI(), ex.getMessage(), ex);
         return build(HttpStatus.INTERNAL_SERVER_ERROR, "Ocurrio un error inesperado. Intente nuevamente.", req, null);
     }

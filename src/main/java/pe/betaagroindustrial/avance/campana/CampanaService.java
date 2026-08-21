@@ -42,10 +42,15 @@ public class CampanaService {
 
         // Si se crea una campana activa nueva para el mismo producto, desactiva
         // la anterior primero (regla de negocio: 1 campana activa por producto).
+        // saveAndFlush (no solo save) es necesario aqui: el indice unico parcial
+        // uq_campana_activa_por_producto se valida en el INSERT siguiente dentro
+        // de la MISMA transaccion, asi que el UPDATE de desactivacion debe llegar
+        // a la base de datos antes de esa insercion, no solo quedar en cola de
+        // Hibernate esperando el flush automatico de fin de transaccion.
         campanaRepository.findByProductoIdAndActivaTrue(producto.getId())
                 .ifPresent(activa -> {
                     activa.setActiva(false);
-                    campanaRepository.save(activa);
+                    campanaRepository.saveAndFlush(activa);
                 });
 
         Campana campana = Campana.builder()
