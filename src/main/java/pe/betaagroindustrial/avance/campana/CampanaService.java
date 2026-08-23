@@ -19,11 +19,17 @@ public class CampanaService {
     private final CampanaRepository campanaRepository;
     private final ProductoRepository productoRepository;
 
+    /**
+     * Por defecto solo trae campanas activas (comportamiento consistente
+     * con Maquina). incluirInactivas=true trae el historial completo,
+     * para auditoria o para poder reactivar una campana anterior.
+     */
     @Transactional(readOnly = true)
-    public List<CampanaResponse> listar() {
-        return campanaRepository.findAll().stream()
-                .map(this::toResponse)
-                .toList();
+    public List<CampanaResponse> listar(boolean incluirInactivas) {
+        List<Campana> campanas = incluirInactivas
+                ? campanaRepository.findAll()
+                : campanaRepository.findByActivaTrue();
+        return campanas.stream().map(this::toResponse).toList();
     }
 
     @Transactional(readOnly = true)
@@ -40,18 +46,7 @@ public class CampanaService {
             throw new BusinessRuleException("La fecha fin no puede ser anterior a la fecha inicio");
         }
 
-        // Si se crea una campana activa nueva para el mismo producto, desactiva
-        // la anterior primero (regla de negocio: 1 campana activa por producto).
-        // saveAndFlush (no solo save) es necesario aqui: el indice unico parcial
-        // uq_campana_activa_por_producto se valida en el INSERT siguiente dentro
-        // de la MISMA transaccion, asi que el UPDATE de desactivacion debe llegar
-        // a la base de datos antes de esa insercion, no solo quedar en cola de
-        // Hibernate esperando el flush automatico de fin de transaccion.
-        campanaRepository.findByProductoIdAndActivaTrue(producto.getId())
-                .ifPresent(activa -> {
-                    activa.setActiva(false);
-                    campanaRepository.saveAndFlush(activa);
-                });
+        desactivarActivaExistente(producto.getId(), null);
 
         Campana campana = Campana.builder()
                 .producto(producto)
@@ -88,6 +83,28 @@ public class CampanaService {
         Campana campana = buscarOFallar(id);
         campana.setActiva(false);
         campanaRepository.save(campana);
+    }
+
+    /**
+     * Reactiva una campana previamente desactivada. Respeta la regla de
+     * "1 campana activa por producto": si ya existe otra activa para el
+     * mismo producto, la desactiva primero.
+     */
+    @Transactional
+    public CampanaResponse reactivar(Long id) {
+        Campana campana = buscarOFallar(id);
+        desactivarActivaExistente(campana.getProducto().getId(), campana.getId());
+        campana.setActiva(true);
+        return toResponse(campanaRepository.save(campana));
+    }
+
+    private void desactivarActivaExistente(Long productoId, Long idAExcluir) {
+        campanaRepository.findByProductoIdAndActivaTrue(productoId)
+                .filter(activa -> idAExcluir == null || !activa.getId().equals(idAExcluir))
+                .ifPresent(activa -> {
+                    activa.setActiva(false);
+                    campanaRepository.saveAndFlush(activa);
+                });
     }
 
     private Campana buscarOFallar(Long id) {

@@ -21,11 +21,17 @@ public class MaquinaService {
     private final CampanaRepository campanaRepository;
     private final UsuarioRepository usuarioRepository;
 
+    /**
+     * Por defecto solo trae maquinas activas. incluirInactivas=true trae
+     * el historial completo (por ejemplo, para poder reactivar una
+     * maquina retirada por error).
+     */
     @Transactional(readOnly = true)
-    public List<MaquinaResponse> listarPorCampana(Long campanaId) {
-        return maquinaRepository.findByCampanaIdAndActivoTrueOrderByOrdenAsc(campanaId).stream()
-                .map(this::toResponse)
-                .toList();
+    public List<MaquinaResponse> listarPorCampana(Long campanaId, boolean incluirInactivas) {
+        List<Maquina> maquinas = incluirInactivas
+                ? maquinaRepository.findByCampanaIdOrderByOrdenAsc(campanaId)
+                : maquinaRepository.findByCampanaIdAndActivoTrueOrderByOrdenAsc(campanaId);
+        return maquinas.stream().map(this::toResponse).toList();
     }
 
     @Transactional(readOnly = true)
@@ -73,6 +79,13 @@ public class MaquinaService {
         Maquina maquina = buscarOFallar(id);
         maquina.setActivo(false);
         maquinaRepository.save(maquina);
+    }
+
+    @Transactional
+    public MaquinaResponse reactivar(Long id) {
+        Maquina maquina = buscarOFallar(id);
+        maquina.setActivo(true);
+        return toResponse(maquinaRepository.save(maquina));
     }
 
     private Usuario resolverSupervisor(Long supervisorId) {

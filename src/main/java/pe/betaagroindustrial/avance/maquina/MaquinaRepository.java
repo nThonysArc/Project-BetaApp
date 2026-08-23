@@ -7,4 +7,6 @@ import java.util.List;
 public interface MaquinaRepository extends JpaRepository<Maquina, Long> {
 
     List<Maquina> findByCampanaIdAndActivoTrueOrderByOrdenAsc(Long campanaId);
+
+    List<Maquina> findByCampanaIdOrderByOrdenAsc(Long campanaId);
 }

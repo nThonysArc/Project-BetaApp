@@ -19,8 +19,9 @@ public class CampanaController {
     private final CampanaService campanaService;
 
     @GetMapping
-    public ResponseEntity<List<CampanaResponse>> listar() {
-        return ResponseEntity.ok(campanaService.listar());
+    public ResponseEntity<List<CampanaResponse>> listar(
+            @RequestParam(defaultValue = "false") boolean incluirInactivas) {
+        return ResponseEntity.ok(campanaService.listar(incluirInactivas));
     }
 
     @GetMapping("/{id}")
@@ -46,5 +47,11 @@ public class CampanaController {
     public ResponseEntity<Void> desactivar(@PathVariable Long id) {
         campanaService.desactivar(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/{id}/reactivar")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<CampanaResponse> reactivar(@PathVariable Long id) {
+        return ResponseEntity.ok(campanaService.reactivar(id));
     }
 }

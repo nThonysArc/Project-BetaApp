@@ -10,10 +10,19 @@ import pe.betaagroindustrial.avance.common.audit.Auditable;
 import pe.betaagroindustrial.avance.proceso.ProcesoDiario;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 
 /**
- * Corresponde a la tabla "TOTAL A PROCESAR" de la plantilla original:
- * jabas/kilos planificados por variedad para el dia.
+ * Ingreso acumulado de materia prima por variedad, para el proceso diario.
+ *
+ * jabas/kilos representan el ACUMULADO reportado por Recepcion hasta el
+ * momento (no un plan fijo): cada vez que Recepcion manda una cifra nueva,
+ * esta fila se actualiza (upsert) con el valor absoluto mas reciente, no
+ * se suma un delta.
+ *
+ * El peso promedio por jaba (kilos/jabas) se deriva de aqui y se usa para
+ * calcular automaticamente el peso de las jabas procesadas por variedad
+ * en cada corte, en vez de pesar cada viaje en bascula.
  */
 @Entity
 @Table(name = "materia_prima_plan")
@@ -46,4 +55,16 @@ public class MateriaPrimaPlan extends Auditable {
     @Column(name = "orden", nullable = false)
     @Builder.Default
     private Short orden = 0;
+
+    /**
+     * kilos / jabas, redondeado a 3 decimales. Null si jabas es 0 (evita
+     * division por cero cuando aun no hay ingreso reportado).
+     */
+    @Transient
+    public BigDecimal getPesoPromedioPorJaba() {
+        if (jabasPlan == null || jabasPlan.compareTo(BigDecimal.ZERO) == 0) {
+            return null;
+        }
+        return kilosPlan.divide(jabasPlan, 3, RoundingMode.HALF_UP);
+    }
 }

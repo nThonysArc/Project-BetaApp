@@ -19,8 +19,10 @@ public class MaquinaController {
     private final MaquinaService maquinaService;
 
     @GetMapping
-    public ResponseEntity<List<MaquinaResponse>> listarPorCampana(@RequestParam Long campanaId) {
-        return ResponseEntity.ok(maquinaService.listarPorCampana(campanaId));
+    public ResponseEntity<List<MaquinaResponse>> listarPorCampana(
+            @RequestParam Long campanaId,
+            @RequestParam(defaultValue = "false") boolean incluirInactivas) {
+        return ResponseEntity.ok(maquinaService.listarPorCampana(campanaId, incluirInactivas));
     }
 
     @GetMapping("/{id}")
@@ -46,5 +48,11 @@ public class MaquinaController {
     public ResponseEntity<Void> desactivar(@PathVariable Long id) {
         maquinaService.desactivar(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/{id}/reactivar")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<MaquinaResponse> reactivar(@PathVariable Long id) {
+        return ResponseEntity.ok(maquinaService.reactivar(id));
     }
 }
