@@ -3,7 +3,6 @@ package pe.betaagroindustrial.avance.proceso.corte.dto;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalTime;
-import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -24,8 +23,6 @@ public record CorteResponse(
         BigDecimal pesoTotalAjustado,
         BigDecimal pesoTotalEfectivo,
 
-        String estado,
-        OffsetDateTime consolidadoEn,
         boolean requiereRevision,
         UUID clienteUuid,
 

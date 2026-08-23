@@ -9,6 +9,7 @@ import pe.betaagroindustrial.avance.maquina.Maquina;
 import pe.betaagroindustrial.avance.maquina.MaquinaKato;
 import pe.betaagroindustrial.avance.maquina.MaquinaKatoRepository;
 import pe.betaagroindustrial.avance.maquina.MaquinaRepository;
+import pe.betaagroindustrial.avance.proceso.EstadoProceso;
 import pe.betaagroindustrial.avance.proceso.ProcesoDiario;
 import pe.betaagroindustrial.avance.proceso.ProcesoDiarioRepository;
 import pe.betaagroindustrial.avance.proceso.auditoria.AuditoriaEdicion;
@@ -28,7 +29,12 @@ import java.util.Optional;
  * Corazon del sistema: clonado del corte anterior para armar el formulario
  * simplificado. Cada fila de detalle es maquina + kato + variedad, para
  * poder saber cuantos kilos proceso especificamente cada kato de cada
- * maquina - no solo el total agregado del corte.
+ * maquina.
+ *
+ * El punto de cierre real es el ProcesoDiario completo, no cada corte
+ * individual: mientras el proceso este ABIERTO, cualquiera de sus cortes
+ * se edita libremente (incluso ajustar la primera hora en base a lo que
+ * se descubre en la ultima). Una vez CERRADO, editar exige motivo.
  */
 @Service
 @RequiredArgsConstructor
@@ -76,10 +82,10 @@ public class CorteService {
                         d.getMaquinaKato().getNombre(),
                         d.getVariedad().getId(),
                         d.getVariedad().getNombre(),
-                        BigDecimal.ZERO,       // jabas: varia cada hora, se deja en cero
-                        BigDecimal.ZERO,       // peso total: varia cada hora, se deja en cero
-                        d.getEmpacadores(),    // personal: casi no cambia en el dia, se mantiene
-                        BigDecimal.ZERO,       // kg por empacador: se recalcula, se deja en cero
+                        BigDecimal.ZERO,
+                        BigDecimal.ZERO,
+                        d.getEmpacadores(),
+                        BigDecimal.ZERO,
                         d.getOrden()
                 ))
                 .toList();
@@ -108,6 +114,11 @@ public class CorteService {
         ProcesoDiario proceso = procesoDiarioRepository.findById(procesoDiarioId)
                 .orElseThrow(() -> ResourceNotFoundException.of("ProcesoDiario", procesoDiarioId));
 
+        if (proceso.getEstado() == EstadoProceso.CERRADO) {
+            throw new BusinessRuleException(
+                    "Este proceso diario ya esta cerrado. No se pueden agregar nuevos cortes.");
+        }
+
         Short siguienteNumero = corteRepository
                 .findTopByProcesoDiarioIdOrderByNumeroCorteDesc(procesoDiarioId)
                 .map(c -> (short) (c.getNumeroCorte() + 1))
@@ -126,7 +137,6 @@ public class CorteService {
                 .observacion(request.observacion())
                 .jabasTotalAjustado(request.jabasTotalAjustado())
                 .pesoTotalAjustado(request.pesoTotalAjustado())
-                .estado(EstadoCorte.BORRADOR)
                 .clienteUuid(request.clienteUuid())
                 .build();
 
@@ -146,10 +156,10 @@ public class CorteService {
         Corte corte = corteRepository.findById(corteId)
                 .orElseThrow(() -> ResourceNotFoundException.of("Corte", corteId));
 
-        boolean esConsolidado = corte.getEstado() == EstadoCorte.CONSOLIDADO;
+        boolean procesoEstaCerrado = corte.getProcesoDiario().getEstado() == EstadoProceso.CERRADO;
         boolean hayAjusteManual = request.jabasTotalAjustado() != null || request.pesoTotalAjustado() != null;
 
-        if (esConsolidado || hayAjusteManual) {
+        if (procesoEstaCerrado || hayAjusteManual) {
             exigirMotivoAjuste(request.motivoAjuste());
         }
 
@@ -186,26 +196,7 @@ public class CorteService {
     }
 
     // ==========================================================
-    // 4. CONSOLIDAR
-    // ==========================================================
-
-    @Transactional
-    public CorteResponse consolidar(Long corteId, String emailUsuario) {
-        Corte corte = corteRepository.findById(corteId)
-                .orElseThrow(() -> ResourceNotFoundException.of("Corte", corteId));
-
-        Usuario usuario = usuarioRepository.findByEmail(emailUsuario)
-                .orElseThrow(() -> ResourceNotFoundException.of("Usuario", emailUsuario));
-
-        corte.setEstado(EstadoCorte.CONSOLIDADO);
-        corte.setConsolidadoEn(java.time.OffsetDateTime.now());
-        corte.setConsolidadoPor(usuario);
-
-        return toResponse(corteRepository.save(corte));
-    }
-
-    // ==========================================================
-    // 5. LISTAR
+    // 4. LISTAR / OBTENER
     // ==========================================================
 
     @Transactional(readOnly = true)
@@ -213,6 +204,13 @@ public class CorteService {
         return corteRepository.findByProcesoDiarioIdOrderByNumeroCorteAsc(procesoDiarioId).stream()
                 .map(this::toResponse)
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public CorteResponse obtenerPorId(Long corteId) {
+        Corte corte = corteRepository.findById(corteId)
+                .orElseThrow(() -> ResourceNotFoundException.of("Corte", corteId));
+        return toResponse(corte);
     }
 
     // ==========================================================
@@ -247,11 +245,6 @@ public class CorteService {
         });
     }
 
-    /**
-     * Los totales del corte SIEMPRE se derivan de la suma del detalle
-     * (por maquina+kato+variedad). Nunca se aceptan "a mano" en estas
-     * columnas - el unico override manual valido es *TotalAjustado.
-     */
     private void calcularTotales(Corte corte) {
         BigDecimal jabas = corte.getDetalles().stream()
                 .map(CorteDetalle::getJabas)
@@ -269,7 +262,7 @@ public class CorteService {
         if (motivo == null || motivo.isBlank()) {
             throw new BusinessRuleException(
                     "Se requiere indicar un motivo para ajustar manualmente un total "
-                            + "o para editar un corte ya consolidado."
+                            + "o para editar un corte de un proceso ya cerrado."
             );
         }
     }
@@ -341,8 +334,6 @@ public class CorteService {
                 corte.getPesoTotalCalculado(),
                 corte.getPesoTotalAjustado(),
                 corte.getPesoTotalEfectivo(),
-                corte.getEstado().name(),
-                corte.getConsolidadoEn(),
                 corte.isRequiereRevision(),
                 corte.getClienteUuid(),
                 detalles

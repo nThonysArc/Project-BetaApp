@@ -8,12 +8,10 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import pe.betaagroindustrial.avance.common.audit.Auditable;
 import pe.betaagroindustrial.avance.proceso.ProcesoDiario;
-import pe.betaagroindustrial.avance.usuario.Usuario;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalTime;
-import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -27,6 +25,13 @@ import java.util.UUID;
  * sistema) se usa *Ajustado, que nunca sobrescribe el calculado.
  *
  * valorEfectivo = ajustado != null ? ajustado : calculado
+ *
+ * No existe un "estado" de consolidacion a nivel de corte individual:
+ * el punto de cierre real es el ProcesoDiario completo (ABIERTO/CERRADO).
+ * Mientras el proceso este abierto, cualquier corte de esa fecha puede
+ * editarse libremente - hasta la ultima hora puede requerir ajustar el
+ * peso de la primera, para cuadrar con el ingreso total reportado. Una
+ * vez cerrado el proceso, editar cualquiera de sus cortes exige motivo.
  */
 @Entity
 @Table(name = "corte")
@@ -71,18 +76,6 @@ public class Corte extends Auditable {
 
     @Column(name = "peso_total_ajustado", precision = 12, scale = 2)
     private BigDecimal pesoTotalAjustado;
-
-    @Enumerated(EnumType.STRING)
-    @Column(name = "estado", nullable = false, length = 20)
-    @Builder.Default
-    private EstadoCorte estado = EstadoCorte.BORRADOR;
-
-    @Column(name = "consolidado_en")
-    private OffsetDateTime consolidadoEn;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "consolidado_por")
-    private Usuario consolidadoPor;
 
     @Column(name = "requiere_revision", nullable = false)
     @Builder.Default

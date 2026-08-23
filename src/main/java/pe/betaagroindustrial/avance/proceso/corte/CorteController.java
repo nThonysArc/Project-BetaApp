@@ -12,6 +12,17 @@ import pe.betaagroindustrial.avance.proceso.corte.dto.CorteResponse;
 
 import java.util.List;
 
+/**
+ * Flujo tipico desde el frontend:
+ *  1. GET  /plantilla-siguiente  -> borrador clonado del corte anterior
+ *  2. POST /                     -> guarda el corte real (idempotente via clienteUuid)
+ *  3. GET  /{corteId}             -> ver un corte especifico
+ *  4. PUT  /{corteId}             -> corrige un corte existente (libre si el
+ *                                    proceso esta ABIERTO, exige motivo si CERRADO)
+ *
+ * El cierre real ocurre a nivel de ProcesoDiario
+ * (ver ProcesoDiarioController POST /{id}/cerrar), no por corte individual.
+ */
 @RestController
 @RequestMapping("/api/procesos/{procesoDiarioId}/cortes")
 @RequiredArgsConstructor
@@ -29,6 +40,11 @@ public class CorteController {
         return ResponseEntity.ok(corteService.listarPorProceso(procesoDiarioId));
     }
 
+    @GetMapping("/{corteId}")
+    public ResponseEntity<CorteResponse> obtener(@PathVariable Long procesoDiarioId, @PathVariable Long corteId) {
+        return ResponseEntity.ok(corteService.obtenerPorId(corteId));
+    }
+
     @PostMapping
     public ResponseEntity<CorteResponse> crear(@PathVariable Long procesoDiarioId,
                                                 @Valid @RequestBody CorteRequest request,
@@ -43,12 +59,5 @@ public class CorteController {
                                                       @Valid @RequestBody CorteRequest request,
                                                       Authentication authentication) {
         return ResponseEntity.ok(corteService.actualizar(corteId, request, authentication.getName()));
-    }
-
-    @PostMapping("/{corteId}/consolidar")
-    public ResponseEntity<CorteResponse> consolidar(@PathVariable Long procesoDiarioId,
-                                                       @PathVariable Long corteId,
-                                                       Authentication authentication) {
-        return ResponseEntity.ok(corteService.consolidar(corteId, authentication.getName()));
     }
 }
