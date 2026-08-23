@@ -8,18 +8,28 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import pe.betaagroindustrial.avance.common.audit.Auditable;
 import pe.betaagroindustrial.avance.maquina.Maquina;
+import pe.betaagroindustrial.avance.maquina.MaquinaKato;
+import pe.betaagroindustrial.avance.variedad.Variedad;
 
 import java.math.BigDecimal;
 import java.util.UUID;
 
+/**
+ * Una fila de detalle de un corte: que maquina + kato proceso que
+ * variedad, cuantas jabas, y a que peso total (derivado del peso
+ * promedio de la variedad segun el ultimo ingreso reportado). El kg por
+ * empacador es ese peso total dividido entre los empacadores de esa
+ * fila - asi se puede saber cuanto proceso especificamente cada kato de
+ * cada maquina, no solo el total agregado del corte.
+ */
 @Entity
-@Table(name = "corte_maquina_kato")
+@Table(name = "corte_detalle")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class CorteMaquinaKato extends Auditable {
+public class CorteDetalle extends Auditable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -33,8 +43,21 @@ public class CorteMaquinaKato extends Auditable {
     @JoinColumn(name = "maquina_id", nullable = false)
     private Maquina maquina;
 
-    @Column(name = "kato_nombre", nullable = false, length = 30)
-    private String katoNombre;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "maquina_kato_id", nullable = false)
+    private MaquinaKato maquinaKato;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "variedad_id", nullable = false)
+    private Variedad variedad;
+
+    @Column(name = "jabas", nullable = false, precision = 10, scale = 0)
+    @Builder.Default
+    private BigDecimal jabas = BigDecimal.ZERO;
+
+    @Column(name = "peso_total", nullable = false, precision = 12, scale = 2)
+    @Builder.Default
+    private BigDecimal pesoTotal = BigDecimal.ZERO;
 
     @Column(name = "empacadores", nullable = false)
     @Builder.Default

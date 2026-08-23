@@ -8,6 +8,8 @@ import pe.betaagroindustrial.avance.proceso.ProcesoDiario;
 import pe.betaagroindustrial.avance.proceso.ProcesoDiarioRepository;
 import pe.betaagroindustrial.avance.proceso.materiaprima.dto.IngresoMateriaPrimaRequest;
 import pe.betaagroindustrial.avance.proceso.materiaprima.dto.IngresoMateriaPrimaResponse;
+import pe.betaagroindustrial.avance.variedad.Variedad;
+import pe.betaagroindustrial.avance.variedad.VariedadRepository;
 
 import java.util.List;
 
@@ -17,6 +19,7 @@ public class MateriaPrimaPlanService {
 
     private final MateriaPrimaPlanRepository materiaPrimaPlanRepository;
     private final ProcesoDiarioRepository procesoDiarioRepository;
+    private final VariedadRepository variedadRepository;
 
     @Transactional(readOnly = true)
     public List<IngresoMateriaPrimaResponse> listar(Long procesoDiarioId) {
@@ -26,24 +29,26 @@ public class MateriaPrimaPlanService {
     }
 
     /**
-     * Upsert: si ya existe un ingreso registrado para esta variedad en este
-     * proceso diario, se ACTUALIZA con el nuevo acumulado (no se suma).
-     * Si no existe, se crea. Asi cada actualizacion de Recepcion simplemente
-     * reemplaza el valor anterior por el mas reciente.
+     * Upsert por variedad: si ya existe un ingreso registrado para esta
+     * variedad en este proceso diario, se ACTUALIZA con el nuevo
+     * acumulado (no se suma). Si no existe, se crea.
      */
     @Transactional
     public IngresoMateriaPrimaResponse actualizar(Long procesoDiarioId, IngresoMateriaPrimaRequest request) {
         ProcesoDiario proceso = procesoDiarioRepository.findById(procesoDiarioId)
                 .orElseThrow(() -> ResourceNotFoundException.of("ProcesoDiario", procesoDiarioId));
 
+        Variedad variedad = variedadRepository.findById(request.variedadId())
+                .orElseThrow(() -> ResourceNotFoundException.of("Variedad", request.variedadId()));
+
         MateriaPrimaPlan ingreso = materiaPrimaPlanRepository
-                .findByProcesoDiarioIdAndVariedadIgnoreCase(procesoDiarioId, request.variedad())
+                .findByProcesoDiarioIdAndVariedadId(procesoDiarioId, request.variedadId())
                 .orElseGet(() -> {
                     short siguienteOrden = (short) materiaPrimaPlanRepository
                             .findByProcesoDiarioIdOrderByOrdenAsc(procesoDiarioId).size();
                     return MateriaPrimaPlan.builder()
                             .procesoDiario(proceso)
-                            .variedad(request.variedad())
+                            .variedad(variedad)
                             .orden(siguienteOrden)
                             .build();
                 });
@@ -57,7 +62,8 @@ public class MateriaPrimaPlanService {
     private IngresoMateriaPrimaResponse toResponse(MateriaPrimaPlan ingreso) {
         return new IngresoMateriaPrimaResponse(
                 ingreso.getId(),
-                ingreso.getVariedad(),
+                ingreso.getVariedad().getId(),
+                ingreso.getVariedad().getNombre(),
                 ingreso.getJabasPlan(),
                 ingreso.getKilosPlan(),
                 ingreso.getPesoPromedioPorJaba(),

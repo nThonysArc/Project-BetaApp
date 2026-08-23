@@ -9,5 +9,5 @@ public interface MateriaPrimaPlanRepository extends JpaRepository<MateriaPrimaPl
 
     List<MateriaPrimaPlan> findByProcesoDiarioIdOrderByOrdenAsc(Long procesoDiarioId);
 
-    Optional<MateriaPrimaPlan> findByProcesoDiarioIdAndVariedadIgnoreCase(Long procesoDiarioId, String variedad);
+    Optional<MateriaPrimaPlan> findByProcesoDiarioIdAndVariedadId(Long procesoDiarioId, Long variedadId);
 }

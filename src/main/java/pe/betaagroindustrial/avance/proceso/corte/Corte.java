@@ -19,19 +19,14 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Registro de avance por hora. Es la tabla central del sistema.
+ * Registro de avance por hora. Tabla central del sistema.
  *
- * Los totales (jabasTotalCalculado / pesoTotalCalculado) se derivan siempre
- * de la suma de CorteVariedadDetalle - nunca se escriben "a mano" en esa
- * columna. Si el usuario necesita corregir manualmente (bascula real vs
- * calculo del sistema), se completa el campo *Ajustado correspondiente.
+ * jabasTotalCalculado/pesoTotalCalculado se derivan SIEMPRE de la suma
+ * de "detalles" (cada fila maquina+kato+variedad) - nunca se escriben
+ * a mano. Para corregir manualmente (bascula real vs calculo del
+ * sistema) se usa *Ajustado, que nunca sobrescribe el calculado.
  *
- * El valor que debe usarse en cualquier reporte/KPI es siempre:
- *   valorEfectivo = ajustado != null ? ajustado : calculado
- *
- * clienteUuid es la clave de idempotencia para sincronizacion offline-first:
- * generado en el dispositivo antes de tener conexion, evita duplicados si
- * el POST se reintenta tras una perdida de senal a mitad del envio.
+ * valorEfectivo = ajustado != null ? ajustado : calculado
  */
 @Entity
 @Table(name = "corte")
@@ -98,16 +93,8 @@ public class Corte extends Auditable {
 
     @OneToMany(mappedBy = "corte", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @Builder.Default
-    private List<CorteVariedadDetalle> variedades = new ArrayList<>();
+    private List<CorteDetalle> detalles = new ArrayList<>();
 
-    @OneToMany(mappedBy = "corte", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
-    @Builder.Default
-    private List<CorteMaquinaKato> maquinasKato = new ArrayList<>();
-
-    /**
-     * Valor efectivo de jabas: el ajuste manual tiene siempre prioridad
-     * sobre el calculo automatico, sin perder nunca el dato calculado original.
-     */
     @Transient
     public BigDecimal getJabasTotalEfectivo() {
         return jabasTotalAjustado != null ? jabasTotalAjustado : jabasTotalCalculado;

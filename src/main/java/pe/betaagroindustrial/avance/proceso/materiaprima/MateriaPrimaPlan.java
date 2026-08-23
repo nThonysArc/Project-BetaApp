@@ -8,21 +8,15 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import pe.betaagroindustrial.avance.common.audit.Auditable;
 import pe.betaagroindustrial.avance.proceso.ProcesoDiario;
+import pe.betaagroindustrial.avance.variedad.Variedad;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 
 /**
  * Ingreso acumulado de materia prima por variedad, para el proceso diario.
- *
  * jabas/kilos representan el ACUMULADO reportado por Recepcion hasta el
- * momento (no un plan fijo): cada vez que Recepcion manda una cifra nueva,
- * esta fila se actualiza (upsert) con el valor absoluto mas reciente, no
- * se suma un delta.
- *
- * El peso promedio por jaba (kilos/jabas) se deriva de aqui y se usa para
- * calcular automaticamente el peso de las jabas procesadas por variedad
- * en cada corte, en vez de pesar cada viaje en bascula.
+ * momento (upsert por variedad, no un plan fijo ni un delta).
  */
 @Entity
 @Table(name = "materia_prima_plan")
@@ -41,8 +35,9 @@ public class MateriaPrimaPlan extends Auditable {
     @JoinColumn(name = "proceso_diario_id", nullable = false)
     private ProcesoDiario procesoDiario;
 
-    @Column(name = "variedad", nullable = false, length = 80)
-    private String variedad;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "variedad_id", nullable = false)
+    private Variedad variedad;
 
     @Column(name = "jabas_plan", nullable = false, precision = 10, scale = 0)
     @Builder.Default
@@ -56,10 +51,6 @@ public class MateriaPrimaPlan extends Auditable {
     @Builder.Default
     private Short orden = 0;
 
-    /**
-     * kilos / jabas, redondeado a 3 decimales. Null si jabas es 0 (evita
-     * division por cero cuando aun no hay ingreso reportado).
-     */
     @Transient
     public BigDecimal getPesoPromedioPorJaba() {
         if (jabasPlan == null || jabasPlan.compareTo(BigDecimal.ZERO) == 0) {

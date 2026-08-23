@@ -5,7 +5,8 @@ import java.time.Instant;
 
 public record IngresoMateriaPrimaResponse(
         Long id,
-        String variedad,
+        Long variedadId,
+        String variedadNombre,
         BigDecimal jabas,
         BigDecimal kilos,
         BigDecimal pesoPromedioPorJaba,

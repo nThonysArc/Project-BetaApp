@@ -29,7 +29,6 @@ public record CorteResponse(
         boolean requiereRevision,
         UUID clienteUuid,
 
-        List<VariedadDetalleDTO> variedades,
-        List<MaquinaKatoDTO> maquinasKato
+        List<CorteDetalleDTO> detalles
 ) {
 }

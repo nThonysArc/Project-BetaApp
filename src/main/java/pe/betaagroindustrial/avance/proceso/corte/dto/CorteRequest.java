@@ -17,8 +17,7 @@ public record CorteRequest(
         LocalDate fechaCosecha,
         String observacion,
 
-        @NotEmpty @Valid List<VariedadDetalleDTO> variedades,
-        @NotEmpty @Valid List<MaquinaKatoDTO> maquinasKato,
+        @NotEmpty @Valid List<CorteDetalleDTO> detalles,
 
         BigDecimal jabasTotalAjustado,
         BigDecimal pesoTotalAjustado,
