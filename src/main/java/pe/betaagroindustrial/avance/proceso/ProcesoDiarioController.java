@@ -10,6 +10,7 @@ import pe.betaagroindustrial.avance.proceso.dto.ProcesoDiarioRequest;
 import pe.betaagroindustrial.avance.proceso.dto.ProcesoDiarioResponse;
 
 import java.time.LocalDate;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/procesos")
@@ -17,6 +18,11 @@ import java.time.LocalDate;
 public class ProcesoDiarioController {
 
     private final ProcesoDiarioService procesoDiarioService;
+
+    @GetMapping
+    public ResponseEntity<List<ProcesoDiarioResponse>> listarPorCampana(@RequestParam Long campanaId) {
+        return ResponseEntity.ok(procesoDiarioService.listarPorCampana(campanaId));
+    }
 
     @GetMapping("/{id}")
     public ResponseEntity<ProcesoDiarioResponse> obtener(@PathVariable Long id) {
@@ -38,5 +44,10 @@ public class ProcesoDiarioController {
     @PostMapping("/{id}/cerrar")
     public ResponseEntity<ProcesoDiarioResponse> cerrar(@PathVariable Long id) {
         return ResponseEntity.ok(procesoDiarioService.cerrar(id));
+    }
+
+    @PostMapping("/{id}/reabrir")
+    public ResponseEntity<ProcesoDiarioResponse> reabrir(@PathVariable Long id) {
+        return ResponseEntity.ok(procesoDiarioService.reabrir(id));
     }
 }

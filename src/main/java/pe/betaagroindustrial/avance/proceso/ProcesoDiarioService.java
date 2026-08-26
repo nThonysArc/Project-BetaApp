@@ -11,6 +11,7 @@ import pe.betaagroindustrial.avance.proceso.dto.ProcesoDiarioRequest;
 import pe.betaagroindustrial.avance.proceso.dto.ProcesoDiarioResponse;
 
 import java.time.LocalDate;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -34,6 +35,18 @@ public class ProcesoDiarioService {
                 .map(this::toResponse)
                 .orElseThrow(() -> ResourceNotFoundException.of(
                         "ProcesoDiario", "campana=%s, fecha=%s".formatted(campanaId, fecha)));
+    }
+
+    /**
+     * Historial completo de procesos de una campana (abiertos y cerrados),
+     * ordenado del mas reciente al mas antiguo - permite volver a
+     * cualquier dia anterior para revisar o corregir, no solo el de hoy.
+     */
+    @Transactional(readOnly = true)
+    public List<ProcesoDiarioResponse> listarPorCampana(Long campanaId) {
+        return procesoDiarioRepository.findByCampanaIdOrderByFechaDesc(campanaId).stream()
+                .map(this::toResponse)
+                .toList();
     }
 
     @Transactional
@@ -60,6 +73,17 @@ public class ProcesoDiarioService {
     public ProcesoDiarioResponse cerrar(Long id) {
         ProcesoDiario proceso = buscarOFallar(id);
         proceso.setEstado(EstadoProceso.CERRADO);
+        return toResponse(procesoDiarioRepository.save(proceso));
+    }
+
+    /**
+     * Reabre un proceso cerrado - por si se cerro por error, o se necesita
+     * agregar un corte nuevo a un dia que ya se habia dado por terminado.
+     */
+    @Transactional
+    public ProcesoDiarioResponse reabrir(Long id) {
+        ProcesoDiario proceso = buscarOFallar(id);
+        proceso.setEstado(EstadoProceso.ABIERTO);
         return toResponse(procesoDiarioRepository.save(proceso));
     }
 
