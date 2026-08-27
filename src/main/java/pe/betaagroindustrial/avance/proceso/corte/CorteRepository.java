@@ -13,4 +13,7 @@ public interface CorteRepository extends JpaRepository<Corte, Long> {
     Optional<Corte> findByClienteUuid(UUID clienteUuid);
 
     Optional<Corte> findTopByProcesoDiarioIdOrderByNumeroCorteDesc(Long procesoDiarioId);
+
+    // Usado para poblar totalCortes en ProcesoDiarioResponse sin cargar los cortes completos.
+    int countByProcesoDiarioId(Long procesoDiarioId);
 }

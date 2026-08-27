@@ -7,6 +7,7 @@ import pe.betaagroindustrial.avance.campana.Campana;
 import pe.betaagroindustrial.avance.campana.CampanaRepository;
 import pe.betaagroindustrial.avance.common.exception.BusinessRuleException;
 import pe.betaagroindustrial.avance.common.exception.ResourceNotFoundException;
+import pe.betaagroindustrial.avance.proceso.corte.CorteRepository;
 import pe.betaagroindustrial.avance.proceso.dto.ProcesoDiarioRequest;
 import pe.betaagroindustrial.avance.proceso.dto.ProcesoDiarioResponse;
 
@@ -19,6 +20,7 @@ public class ProcesoDiarioService {
 
     private final ProcesoDiarioRepository procesoDiarioRepository;
     private final CampanaRepository campanaRepository;
+    private final CorteRepository corteRepository;
 
     @Transactional(readOnly = true)
     public ProcesoDiarioResponse obtenerPorId(Long id) {
@@ -93,12 +95,14 @@ public class ProcesoDiarioService {
     }
 
     private ProcesoDiarioResponse toResponse(ProcesoDiario proceso) {
+        int totalCortes = corteRepository.countByProcesoDiarioId(proceso.getId());
         return new ProcesoDiarioResponse(
                 proceso.getId(),
                 proceso.getCampana().getId(),
                 proceso.getCampana().getNombre(),
                 proceso.getFecha(),
-                proceso.getEstado().name()
+                proceso.getEstado().name(),
+                totalCortes
         );
     }
 }
