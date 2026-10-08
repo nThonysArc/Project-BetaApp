@@ -26,6 +26,7 @@ public record CorteResponse(
         boolean requiereRevision,
         UUID clienteUuid,
 
-        List<CorteDetalleDTO> detalles
+        List<CorteDetalleDTO> detalles,
+        List<CorteSupervisorDTO> supervisores
 ) {
 }

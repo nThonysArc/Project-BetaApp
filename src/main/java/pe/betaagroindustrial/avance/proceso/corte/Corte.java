@@ -88,6 +88,11 @@ public class Corte extends Auditable {
     @Builder.Default
     private List<CorteDetalle> detalles = new ArrayList<>();
 
+    /** Supervisor de cada maquina en este corte (a lo sumo uno por maquina). */
+    @OneToMany(mappedBy = "corte", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @Builder.Default
+    private List<CorteMaquina> supervisores = new ArrayList<>();
+
     @Transient
     public BigDecimal getJabasTotalEfectivo() {
         return jabasTotalAjustado != null ? jabasTotalAjustado : jabasTotalCalculado;

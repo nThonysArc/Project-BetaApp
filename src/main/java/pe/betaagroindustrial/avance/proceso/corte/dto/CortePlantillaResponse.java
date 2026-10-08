@@ -10,6 +10,7 @@ public record CortePlantillaResponse(
         LocalTime horaInicio,
         LocalTime horaFin,
         LocalDate fechaCosecha,
-        List<CorteDetalleDTO> detalles
+        List<CorteDetalleDTO> detalles,
+        List<CorteSupervisorDTO> supervisores
 ) {
 }

@@ -19,6 +19,13 @@ public record CorteRequest(
 
         @NotEmpty @Valid List<CorteDetalleDTO> detalles,
 
+        /**
+         * Opcional (compatibilidad con clientes anteriores). Un elemento por
+         * maquina del detalle. Si una maquina no aparece aqui se usa el
+         * supervisor del corte anterior, o el sugerido de la maquina.
+         */
+        @Valid List<CorteSupervisorDTO> supervisores,
+
         BigDecimal jabasTotalAjustado,
         BigDecimal pesoTotalAjustado,
         String motivoAjuste

@@ -22,7 +22,9 @@ import pe.betaagroindustrial.avance.variedad.VariedadRepository;
 
 import java.math.BigDecimal;
 import java.time.LocalTime;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -67,6 +69,7 @@ public class CorteService {
                     LocalTime.of(7, 0),
                     LocalTime.of(8, 0),
                     null,
+                    List.of(),
                     List.of()
             );
         }
@@ -96,7 +99,8 @@ public class CorteService {
                 anterior.getHoraFin(),
                 anterior.getHoraFin().plusHours(1),
                 anterior.getFechaCosecha(),
-                detallesClonados
+                detallesClonados,
+                supervisoresDeCorte(anterior, false)
         );
     }
 
@@ -141,6 +145,8 @@ public class CorteService {
                 .build();
 
         aplicarDetalle(corte, request);
+        aplicarSupervisores(corte, request, corteRepository
+                .findTopByProcesoDiarioIdOrderByNumeroCorteDesc(procesoDiarioId));
         calcularTotales(corte);
 
         Corte guardado = corteRepository.save(corte);
@@ -155,6 +161,11 @@ public class CorteService {
     public CorteResponse actualizar(Long corteId, CorteRequest request, String emailUsuario) {
         Corte corte = corteRepository.findById(corteId)
                 .orElseThrow(() -> ResourceNotFoundException.of("Corte", corteId));
+
+        // Se consulta antes de modificar el corte para no disparar un flush a medias.
+        Optional<Corte> corteAnterior = corteRepository
+                .findTopByProcesoDiarioIdAndNumeroCorteLessThanOrderByNumeroCorteDesc(
+                        corte.getProcesoDiario().getId(), corte.getNumeroCorte());
 
         boolean procesoEstaCerrado = corte.getProcesoDiario().getEstado() == EstadoProceso.CERRADO;
         boolean hayAjusteManual = request.jabasTotalAjustado() != null || request.pesoTotalAjustado() != null;
@@ -175,6 +186,7 @@ public class CorteService {
 
         corte.getDetalles().clear();
         aplicarDetalle(corte, request);
+        aplicarSupervisores(corte, request, corteAnterior);
         calcularTotales(corte);
 
         Usuario usuario = usuarioRepository.findByEmail(emailUsuario)
@@ -243,6 +255,139 @@ public class CorteService {
                             .build()
             );
         });
+    }
+
+    /**
+     * Fija el supervisor de cada maquina que aparece en el detalle del corte.
+     *
+     * Regla: UN solo supervisor por maquina y por corte. Para cada maquina:
+     *  1. si el request lo trae explicitamente (aunque sea null = sin supervisor), se usa ese;
+     *  2. si no, se conserva el que ya tenia este corte (al editar);
+     *  3. si no, se hereda el del corte anterior para esa maquina;
+     *  4. si tampoco existe, se usa el supervisor sugerido de la maquina.
+     *
+     * Las filas existentes se actualizan en el lugar (no se borran y recrean)
+     * para no chocar con la restriccion UNIQUE (corte_id, maquina_id), ya que
+     * Hibernate ejecuta los INSERT antes que los DELETE al hacer flush.
+     */
+    private void aplicarSupervisores(Corte corte, CorteRequest request, Optional<Corte> corteAnterior) {
+        Map<Long, Maquina> maquinasEnUso = new LinkedHashMap<>();
+        corte.getDetalles().forEach(d -> maquinasEnUso.putIfAbsent(d.getMaquina().getId(), d.getMaquina()));
+
+        Map<Long, CorteSupervisorDTO> solicitados = leerSupervisoresSolicitados(request, maquinasEnUso);
+
+        Map<Long, Usuario> heredados = new LinkedHashMap<>();
+        corteAnterior.ifPresent(anterior -> anterior.getSupervisores()
+                .forEach(cm -> heredados.put(cm.getMaquina().getId(), cm.getSupervisor())));
+
+        // Quitar las maquinas que ya no estan en el detalle
+        corte.getSupervisores().removeIf(cm -> !maquinasEnUso.containsKey(cm.getMaquina().getId()));
+
+        maquinasEnUso.forEach((maquinaId, maquina) -> {
+            Optional<CorteMaquina> existente = corte.getSupervisores().stream()
+                    .filter(cm -> cm.getMaquina().getId().equals(maquinaId))
+                    .findFirst();
+
+            CorteSupervisorDTO pedido = solicitados.get(maquinaId);
+
+            Usuario supervisor;
+            if (pedido != null) {
+                Long solicitado = pedido.supervisorId();
+                Usuario actual = existente.map(CorteMaquina::getSupervisor).orElse(null);
+                // Si no cambia, se conserva aunque el usuario se haya desactivado despues
+                // (asi se puede seguir editando un corte historico).
+                supervisor = (actual != null && actual.getId().equals(solicitado))
+                        ? actual
+                        : resolverSupervisor(solicitado);
+            } else if (existente.isPresent()) {
+                supervisor = existente.get().getSupervisor();
+            } else if (heredados.containsKey(maquinaId)) {
+                supervisor = heredados.get(maquinaId);
+            } else {
+                supervisor = maquina.getSupervisor();
+            }
+
+            // La observacion es de ESTA hora: nunca se hereda del corte anterior.
+            String observacion = pedido != null
+                    ? limpiarTexto(pedido.observacion())
+                    : existente.map(CorteMaquina::getObservacion).orElse(null);
+
+            if (existente.isPresent()) {
+                existente.get().setSupervisor(supervisor);
+                existente.get().setObservacion(observacion);
+            } else {
+                corte.getSupervisores().add(CorteMaquina.builder()
+                        .corte(corte)
+                        .maquina(maquina)
+                        .supervisor(supervisor)
+                        .observacion(observacion)
+                        .build());
+            }
+        });
+    }
+
+    private String limpiarTexto(String texto) {
+        return (texto == null || texto.isBlank()) ? null : texto.strip();
+    }
+
+    /** maquinaId -> lo pedido para esa maquina (supervisor y observacion). */
+    private Map<Long, CorteSupervisorDTO> leerSupervisoresSolicitados(CorteRequest request, Map<Long, Maquina> maquinasEnUso) {
+        Map<Long, CorteSupervisorDTO> solicitados = new LinkedHashMap<>();
+        if (request.supervisores() == null) {
+            return solicitados;
+        }
+
+        for (CorteSupervisorDTO s : request.supervisores()) {
+            if (!maquinasEnUso.containsKey(s.maquinaId())) {
+                throw new BusinessRuleException(
+                        "Se indico un supervisor para una maquina que no esta en el detalle del corte.");
+            }
+            if (solicitados.containsKey(s.maquinaId())) {
+                throw new BusinessRuleException(
+                        "Solo se permite un supervisor por maquina en cada corte.");
+            }
+            solicitados.put(s.maquinaId(), s);
+        }
+        return solicitados;
+    }
+
+    private Usuario resolverSupervisor(Long supervisorId) {
+        if (supervisorId == null) {
+            return null;
+        }
+        Usuario usuario = usuarioRepository.findById(supervisorId)
+                .orElseThrow(() -> ResourceNotFoundException.of("Usuario (supervisor)", supervisorId));
+        if (!usuario.isActivo()) {
+            throw new BusinessRuleException("El usuario " + usuario.getNombreCompleto() + " esta inactivo.");
+        }
+        return usuario;
+    }
+
+    /**
+     * Supervisor (y observacion) de cada maquina del corte, en el orden en que
+     * aparecen en el detalle. Si una maquina no tiene fila propia, se muestra el
+     * supervisor sugerido de la maquina. La plantilla del siguiente corte no
+     * arrastra observaciones (conObservacion = false): son de cada hora.
+     */
+    private List<CorteSupervisorDTO> supervisoresDeCorte(Corte corte, boolean conObservacion) {
+        Map<Long, Maquina> maquinasEnUso = new LinkedHashMap<>();
+        corte.getDetalles().forEach(d -> maquinasEnUso.putIfAbsent(d.getMaquina().getId(), d.getMaquina()));
+
+        Map<Long, CorteMaquina> filas = new LinkedHashMap<>();
+        corte.getSupervisores().forEach(cm -> filas.put(cm.getMaquina().getId(), cm));
+
+        return maquinasEnUso.values().stream()
+                .map(m -> {
+                    CorteMaquina fila = filas.get(m.getId());
+                    Usuario sup = fila != null ? fila.getSupervisor() : m.getSupervisor();
+                    return new CorteSupervisorDTO(
+                            m.getId(), m.getNombre(),
+                            sup != null ? sup.getId() : null,
+                            sup != null ? sup.getNombreCompleto() : null,
+                            conObservacion && fila != null ? fila.getObservacion() : null
+                    );
+                })
+                .toList();
     }
 
     private void calcularTotales(Corte corte) {
@@ -336,7 +481,8 @@ public class CorteService {
                 corte.getPesoTotalEfectivo(),
                 corte.isRequiereRevision(),
                 corte.getClienteUuid(),
-                detalles
+                detalles,
+                supervisoresDeCorte(corte, true)
         );
     }
 }

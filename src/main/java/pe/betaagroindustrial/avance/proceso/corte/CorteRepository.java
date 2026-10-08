@@ -14,6 +14,10 @@ public interface CorteRepository extends JpaRepository<Corte, Long> {
 
     Optional<Corte> findTopByProcesoDiarioIdOrderByNumeroCorteDesc(Long procesoDiarioId);
 
+    // Corte inmediatamente anterior (para heredar el supervisor de cada maquina al editar).
+    Optional<Corte> findTopByProcesoDiarioIdAndNumeroCorteLessThanOrderByNumeroCorteDesc(
+            Long procesoDiarioId, Short numeroCorte);
+
     // Usado para poblar totalCortes en ProcesoDiarioResponse sin cargar los cortes completos.
     int countByProcesoDiarioId(Long procesoDiarioId);
 }
