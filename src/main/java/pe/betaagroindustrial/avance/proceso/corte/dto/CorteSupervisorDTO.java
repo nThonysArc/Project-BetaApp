@@ -12,6 +12,7 @@ public record CorteSupervisorDTO(
         String maquinaNombre,
         Long supervisorId,
         String supervisorNombre,
-        String observacion
+        String observacion,
+        boolean almuerzo
 ) {
 }

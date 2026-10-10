@@ -26,6 +26,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Corazon del sistema: clonado del corte anterior para armar el formulario
@@ -312,18 +314,46 @@ public class CorteService {
                     ? limpiarTexto(pedido.observacion())
                     : existente.map(CorteMaquina::getObservacion).orElse(null);
 
+            boolean almuerzo = pedido != null
+                    ? pedido.almuerzo()
+                    : existente.map(CorteMaquina::isAlmuerzo).orElse(false);
+
             if (existente.isPresent()) {
                 existente.get().setSupervisor(supervisor);
                 existente.get().setObservacion(observacion);
+                existente.get().setAlmuerzo(almuerzo);
             } else {
                 corte.getSupervisores().add(CorteMaquina.builder()
                         .corte(corte)
                         .maquina(maquina)
                         .supervisor(supervisor)
                         .observacion(observacion)
+                        .almuerzo(almuerzo)
                         .build());
             }
         });
+
+        aplicarAlmuerzo(corte);
+    }
+
+    /**
+     * Una maquina en almuerzo no produce: se fuerzan a 0 las jabas, el peso y los kg/empacador de
+     * sus filas, sin importar lo que haya enviado el cliente. Asi los totales de la hora nunca
+     * incluyen produccion de una maquina que estaba parada.
+     */
+    private void aplicarAlmuerzo(Corte corte) {
+        Set<Long> enAlmuerzo = corte.getSupervisores().stream()
+                .filter(CorteMaquina::isAlmuerzo)
+                .map(cm -> cm.getMaquina().getId())
+                .collect(Collectors.toSet());
+
+        corte.getDetalles().stream()
+                .filter(d -> enAlmuerzo.contains(d.getMaquina().getId()))
+                .forEach(d -> {
+                    d.setJabas(BigDecimal.ZERO);
+                    d.setPesoTotal(BigDecimal.ZERO);
+                    d.setKgPorEmpacador(BigDecimal.ZERO);
+                });
     }
 
     private String limpiarTexto(String texto) {
@@ -384,7 +414,9 @@ public class CorteService {
                             m.getId(), m.getNombre(),
                             sup != null ? sup.getId() : null,
                             sup != null ? sup.getNombreCompleto() : null,
-                            conObservacion && fila != null ? fila.getObservacion() : null
+                            conObservacion && fila != null ? fila.getObservacion() : null,
+                            // El almuerzo es de ESA hora: la plantilla del siguiente corte nunca lo arrastra.
+                            conObservacion && fila != null && fila.isAlmuerzo()
                     );
                 })
                 .toList();

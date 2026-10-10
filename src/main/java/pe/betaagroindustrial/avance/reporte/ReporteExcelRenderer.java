@@ -74,6 +74,7 @@ public final class ReporteExcelRenderer {
     private static final double ALTO_ENCABEZADO = 21;
     private static final double ALTO_FILA = 20;
     private static final double ALTO_MIN_BLOQUE = 34;
+    private static final double ALTO_PAUSA = 38;
     private static final double INTERLINEADO_OBS = 9.6;
     private static final double ALTO_FILA_PIE = 14.2;
     private static final double MIN_Y_TABLA = 146;
@@ -141,11 +142,14 @@ public final class ReporteExcelRenderer {
         List<String> lineasObs = List.of();
         double alto;
         BigDecimal pesoMaquina = BigDecimal.ZERO;
+        boolean almuerzo;
     }
 
     private static final class Bloque {
         CorteReporte corte;
         int numero;
+        /** Barra "ALMUERZO DEL PERSONAL": todas las maquinas pararon, no es una hora de produccion. */
+        boolean pausa;
         List<Grupo> grupos = new ArrayList<>();
         List<String> lineasObsGeneral = null;
         double y;
@@ -196,12 +200,16 @@ public final class ReporteExcelRenderer {
                 mpJabas = mpJabas.add(nz(l.jabas()));
                 mpKilos = mpKilos.add(nz(l.kilos()));
             }
+            CorteReporte ultimo = null;
             for (CorteReporte c : d.cortes()) {
                 totJabas = totJabas.add(nz(c.jabasTotal()));
                 totKilos = totKilos.add(nz(c.pesoTotal()));
+                if (!c.todoAlmuerzo()) {
+                    ultimo = c;
+                }
             }
-            if (!d.cortes().isEmpty()) {
-                CorteReporte ultimo = d.cortes().get(d.cortes().size() - 1);
+            // "TOTAL" del pie = ultima hora de produccion (la barra de almuerzo no cuenta)
+            if (ultimo != null) {
                 ultJabas = nz(ultimo.jabasTotal());
                 ultKilos = nz(ultimo.pesoTotal());
             }
@@ -226,8 +234,17 @@ public final class ReporteExcelRenderer {
             for (CorteReporte corte : d.cortes()) {
                 Bloque b = new Bloque();
                 b.corte = corte;
-                b.numero = ++numero;
                 b.y = y;
+
+                if (corte.todoAlmuerzo()) {
+                    b.pausa = true;
+                    b.alto = ALTO_PAUSA;
+                    b.acumulado = acumulado;
+                    bloques.add(b);
+                    y += b.alto;
+                    continue;
+                }
+                b.numero = ++numero;
 
                 Map<Long, MaquinaCorteReporte> info = new HashMap<>();
                 for (MaquinaCorteReporte m : corte.maquinas()) {
@@ -249,6 +266,7 @@ public final class ReporteExcelRenderer {
                 for (Grupo g : porMaquina.values()) {
                     MaquinaCorteReporte m = info.get(g.maquinaId);
                     g.observacion = m != null ? m.observacion() : null;
+                    g.almuerzo = m != null && m.almuerzo();
                     if (!vacio(g.observacion)) {
                         hayObsMaquina = true;
                     }
@@ -257,6 +275,9 @@ public final class ReporteExcelRenderer {
                 for (Grupo g : porMaquina.values()) {
                     g.lineasObs = vacio(g.observacion) ? List.of() : p.ajustar(mayus(g.observacion), fObs, anchoObs);
                     g.alto = Math.max(g.filas.size() * ALTO_FILA, g.lineasObs.isEmpty() ? 0 : g.lineasObs.size() * INTERLINEADO_OBS + 8);
+                    if (g.almuerzo) {
+                        g.alto = Math.max(g.alto, 28); // cabe el texto "ALMUERZO DE PERSONAL / MAQUINA N"
+                    }
                     b.grupos.add(g);
                 }
 
@@ -454,6 +475,15 @@ public final class ReporteExcelRenderer {
                 double y0 = b.y, y1 = b.y + b.alto;
                 p.rellenar(C[0], y0, C[13] - C[0], b.alto, LILA);
 
+                if (b.pausa) {
+                    p.texto("ALMUERZO DEL PERSONAL", fuente(true, T_CUERPO), TEXTO, C[0], y0, C[13] - C[0], b.alto, CENTRO);
+                    p.lineaV(C[0], y0, y1, LINEA, 0.8);
+                    p.lineaV(C[13], y0, y1, LINEA, 0.8);
+                    p.lineaH(C[0], C[13], y0, LINEA, 0.8);
+                    p.lineaH(C[0], C[13], y1, LINEA, 0.8);
+                    continue;
+                }
+
                 // Numero de corte, fuera de la tabla
                 p.texto(String.valueOf(b.numero), fuente(true, T_CUERPO), TEXTO, 17, y0, 20, b.alto, CENTRO);
 
@@ -469,6 +499,7 @@ public final class ReporteExcelRenderer {
                 }
 
                 // Grupos por maquina
+                List<Object[]> almuerzos = new ArrayList<>();
                 double y = y0;
                 for (int gi = 0; gi < b.grupos.size(); gi++) {
                     Grupo g = b.grupos.get(gi);
@@ -502,16 +533,25 @@ public final class ReporteExcelRenderer {
                         p.lineas(g.lineasObs, fObs, TEXTO, C[OBS], y, C[OBS + 1] - C[OBS], g.alto, INTERLINEADO_OBS);
                     }
 
+                    // Maquina en almuerzo: JABAS y PESO POR VIAJE se combinan en un solo texto
+                    if (g.almuerzo) {
+                        almuerzos.add(new Object[]{y, g});
+                    }
+
                     // Filas
                     for (int i = 0; i < g.filas.size(); i++) {
                         FilaReporte f = g.filas.get(i);
                         double ry = y + i * rowH;
                         if (i > 0) {
-                            p.lineaH(C[JABAS], C[PESO_MAQ], ry, LINEA, 0.8);
+                            if (!g.almuerzo) {
+                                p.lineaH(C[JABAS], C[PESO_MAQ], ry, LINEA, 0.8);
+                            }
                             p.lineaH(C[MAQUINA], C[OBS], ry, LINEA, 0.8);
                         }
-                        p.texto(fmt(f.jabas(), "#,##0"), fCuerpo, TEXTO, C[JABAS], ry, C[JABAS + 1] - C[JABAS], rowH, CENTRO);
-                        p.texto(fmt(f.peso(), "0.0"), fCuerpo, TEXTO, C[PESO_VIAJE], ry, C[PESO_VIAJE + 1] - C[PESO_VIAJE], rowH, CENTRO);
+                        if (!g.almuerzo) {
+                            p.texto(fmt(f.jabas(), "#,##0"), fCuerpo, TEXTO, C[JABAS], ry, C[JABAS + 1] - C[JABAS], rowH, CENTRO);
+                            p.texto(fmt(f.peso(), "0.0"), fCuerpo, TEXTO, C[PESO_VIAJE], ry, C[PESO_VIAJE + 1] - C[PESO_VIAJE], rowH, CENTRO);
+                        }
                         p.texto(mayus(f.maquina()), fCuerpo, TEXTO, C[MAQUINA], ry, C[MAQUINA + 1] - C[MAQUINA], rowH, CENTRO);
                         p.texto(mayus(f.kato()), fCuerpo, TEXTO, C[KATO], ry, C[KATO + 1] - C[KATO], rowH, CENTRO);
                         p.texto(String.valueOf(f.empacadores()), fCuerpo, TEXTO, C[EMPAC], ry, C[EMPAC + 1] - C[EMPAC], rowH, CENTRO);
@@ -526,6 +566,16 @@ public final class ReporteExcelRenderer {
                 }
                 p.lineaH(C[0], C[13], y0, LINEA, 0.8);
                 p.lineaH(C[0], C[13], y1, LINEA, 0.8);
+
+                // Maquina en almuerzo: JABAS y PESO POR VIAJE son una sola celda combinada,
+                // asi que se borra la linea vertical que las separa y se escribe el texto encima.
+                for (Object[] a : almuerzos) {
+                    double ay = (Double) a[0];
+                    Grupo g = (Grupo) a[1];
+                    p.rellenar(C[PESO_VIAJE] - 0.7, ay + 0.6, 1.4, g.alto - 1.2, LILA);
+                    p.lineas(List.of("ALMUERZO DE PERSONAL", mayus(g.filas.get(0).maquina())), fCuerpo, TEXTO,
+                            C[JABAS], ay, C[PESO_MAQ] - C[JABAS], g.alto, 10.5);
+                }
             }
         }
 

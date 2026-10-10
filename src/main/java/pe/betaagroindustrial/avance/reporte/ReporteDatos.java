@@ -37,7 +37,7 @@ public record ReporteDatos(
     }
 
     /** Supervisor y observacion de una maquina en un corte (supervisor/observacion pueden ser null). */
-    public record MaquinaCorteReporte(Long maquinaId, String supervisor, String observacion) {
+    public record MaquinaCorteReporte(Long maquinaId, String supervisor, String observacion, boolean almuerzo) {
     }
 
     /** Un corte (una hora). jabasTotal/pesoTotal son los efectivos (con ajuste manual si lo hay). */
@@ -51,5 +51,12 @@ public record ReporteDatos(
             List<FilaReporte> filas,
             List<MaquinaCorteReporte> maquinas
     ) {
+        /**
+         * Todas las maquinas del corte salieron a almorzar: no es una hora de produccion, el reporte
+         * dibuja la barra "ALMUERZO DEL PERSONAL" (y la hora no recibe numero).
+         */
+        public boolean todoAlmuerzo() {
+            return maquinas != null && !maquinas.isEmpty() && maquinas.stream().allMatch(MaquinaCorteReporte::almuerzo);
+        }
     }
 }

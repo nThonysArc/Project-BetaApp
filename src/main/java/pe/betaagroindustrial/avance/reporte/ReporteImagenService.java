@@ -115,12 +115,12 @@ public class ReporteImagenService {
         Map<Long, MaquinaCorteReporte> porMaquina = new LinkedHashMap<>();
         for (CorteMaquina cm : corte.getSupervisores()) {
             porMaquina.put(cm.getMaquina().getId(), new MaquinaCorteReporte(
-                    cm.getMaquina().getId(), nombre(cm.getSupervisor()), cm.getObservacion()));
+                    cm.getMaquina().getId(), nombre(cm.getSupervisor()), cm.getObservacion(), cm.isAlmuerzo()));
         }
         for (CorteDetalle d : detalles) {
             Maquina m = d.getMaquina();
             porMaquina.computeIfAbsent(m.getId(),
-                    id -> new MaquinaCorteReporte(id, nombre(m.getSupervisor()), null));
+                    id -> new MaquinaCorteReporte(id, nombre(m.getSupervisor()), null, false));
         }
 
         return new CorteReporte(

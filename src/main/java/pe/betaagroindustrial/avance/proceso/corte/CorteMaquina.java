@@ -49,4 +49,9 @@ public class CorteMaquina extends Auditable {
 
     @Column(name = "observacion", columnDefinition = "TEXT")
     private String observacion;
+
+    /** La maquina salio a almorzar en esta hora: su produccion es 0 y el reporte lo indica. */
+    @Column(name = "almuerzo", nullable = false)
+    @Builder.Default
+    private boolean almuerzo = false;
 }
