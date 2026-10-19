@@ -4,6 +4,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import pe.betaagroindustrial.avance.proceso.corte.dto.CortePlantillaResponse;
@@ -30,21 +31,25 @@ public class CorteController {
 
     private final CorteService corteService;
 
+    @PreAuthorize("hasAuthority('PERM_CORTES_CREAR')")
     @GetMapping("/plantilla-siguiente")
     public ResponseEntity<CortePlantillaResponse> obtenerPlantillaSiguiente(@PathVariable Long procesoDiarioId) {
         return ResponseEntity.ok(corteService.obtenerPlantillaSiguiente(procesoDiarioId));
     }
 
+    @PreAuthorize("hasAuthority('PERM_CORTES_VER')")
     @GetMapping
     public ResponseEntity<List<CorteResponse>> listar(@PathVariable Long procesoDiarioId) {
         return ResponseEntity.ok(corteService.listarPorProceso(procesoDiarioId));
     }
 
+    @PreAuthorize("hasAuthority('PERM_CORTES_VER')")
     @GetMapping("/{corteId}")
     public ResponseEntity<CorteResponse> obtener(@PathVariable Long procesoDiarioId, @PathVariable Long corteId) {
         return ResponseEntity.ok(corteService.obtenerPorId(corteId));
     }
 
+    @PreAuthorize("hasAuthority('PERM_CORTES_CREAR')")
     @PostMapping
     public ResponseEntity<CorteResponse> crear(@PathVariable Long procesoDiarioId,
                                                 @Valid @RequestBody CorteRequest request,
@@ -53,6 +58,7 @@ public class CorteController {
         return ResponseEntity.status(HttpStatus.CREATED).body(creado);
     }
 
+    @PreAuthorize("hasAuthority('PERM_CORTES_EDITAR')")
     @PutMapping("/{corteId}")
     public ResponseEntity<CorteResponse> actualizar(@PathVariable Long procesoDiarioId,
                                                       @PathVariable Long corteId,

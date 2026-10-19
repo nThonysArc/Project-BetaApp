@@ -31,27 +31,27 @@ public class MaquinaController {
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('PERM_CATALOGOS_ADMINISTRAR')")
     public ResponseEntity<MaquinaResponse> crear(@Valid @RequestBody MaquinaRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(maquinaService.crear(request));
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('PERM_CATALOGOS_ADMINISTRAR')")
     public ResponseEntity<MaquinaResponse> actualizar(@PathVariable Long id,
                                                         @Valid @RequestBody MaquinaRequest request) {
         return ResponseEntity.ok(maquinaService.actualizar(id, request));
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('PERM_CATALOGOS_ADMINISTRAR')")
     public ResponseEntity<Void> desactivar(@PathVariable Long id) {
         maquinaService.desactivar(id);
         return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/{id}/reactivar")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('PERM_CATALOGOS_ADMINISTRAR')")
     public ResponseEntity<MaquinaResponse> reactivar(@PathVariable Long id) {
         return ResponseEntity.ok(maquinaService.reactivar(id));
     }

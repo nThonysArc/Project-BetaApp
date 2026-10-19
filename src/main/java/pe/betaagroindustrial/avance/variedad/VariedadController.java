@@ -26,27 +26,27 @@ public class VariedadController {
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('PERM_CATALOGOS_ADMINISTRAR')")
     public ResponseEntity<VariedadResponse> crear(@Valid @RequestBody VariedadRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(variedadService.crear(request));
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('PERM_CATALOGOS_ADMINISTRAR')")
     public ResponseEntity<VariedadResponse> actualizar(@PathVariable Long id,
                                                           @Valid @RequestBody VariedadRequest request) {
         return ResponseEntity.ok(variedadService.actualizar(id, request));
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('PERM_CATALOGOS_ADMINISTRAR')")
     public ResponseEntity<Void> desactivar(@PathVariable Long id) {
         variedadService.desactivar(id);
         return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/{id}/reactivar")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('PERM_CATALOGOS_ADMINISTRAR')")
     public ResponseEntity<VariedadResponse> reactivar(@PathVariable Long id) {
         return ResponseEntity.ok(variedadService.reactivar(id));
     }

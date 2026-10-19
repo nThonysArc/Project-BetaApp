@@ -4,6 +4,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import pe.betaagroindustrial.avance.common.exception.BusinessRuleException;
+import pe.betaagroindustrial.avance.security.AccesoActual;
+import pe.betaagroindustrial.avance.usuario.Permiso;
 import pe.betaagroindustrial.avance.common.exception.ResourceNotFoundException;
 import pe.betaagroindustrial.avance.maquina.Maquina;
 import pe.betaagroindustrial.avance.maquina.MaquinaKato;
@@ -131,6 +133,8 @@ public class CorteService {
                 .orElse((short) 1);
 
         if (request.jabasTotalAjustado() != null || request.pesoTotalAjustado() != null) {
+            AccesoActual.exigir(Permiso.CORTES_AJUSTAR_TOTALES,
+                    "No tienes permiso para ajustar manualmente los totales de un corte.");
             exigirMotivoAjuste(request.motivoAjuste());
         }
 
@@ -171,6 +175,18 @@ public class CorteService {
 
         boolean procesoEstaCerrado = corte.getProcesoDiario().getEstado() == EstadoProceso.CERRADO;
         boolean hayAjusteManual = request.jabasTotalAjustado() != null || request.pesoTotalAjustado() != null;
+
+        if (procesoEstaCerrado) {
+            AccesoActual.exigir(Permiso.CORTES_EDITAR_CERRADO,
+                    "No tienes permiso para modificar cortes de un proceso cerrado.");
+        }
+        // Solo se exige el permiso si el ajuste CAMBIA; reenviar el ajuste ya guardado no es ajustar.
+        boolean cambiaAjuste = !safeEquals(request.jabasTotalAjustado(), corte.getJabasTotalAjustado())
+                || !safeEquals(request.pesoTotalAjustado(), corte.getPesoTotalAjustado());
+        if (cambiaAjuste) {
+            AccesoActual.exigir(Permiso.CORTES_AJUSTAR_TOTALES,
+                    "No tienes permiso para ajustar manualmente los totales de un corte.");
+        }
 
         if (procesoEstaCerrado || hayAjusteManual) {
             exigirMotivoAjuste(request.motivoAjuste());

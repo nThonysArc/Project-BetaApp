@@ -30,27 +30,27 @@ public class CampanaController {
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('PERM_CATALOGOS_ADMINISTRAR')")
     public ResponseEntity<CampanaResponse> crear(@Valid @RequestBody CampanaRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(campanaService.crear(request));
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('PERM_CATALOGOS_ADMINISTRAR')")
     public ResponseEntity<CampanaResponse> actualizar(@PathVariable Long id,
                                                         @Valid @RequestBody CampanaRequest request) {
         return ResponseEntity.ok(campanaService.actualizar(id, request));
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('PERM_CATALOGOS_ADMINISTRAR')")
     public ResponseEntity<Void> desactivar(@PathVariable Long id) {
         campanaService.desactivar(id);
         return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/{id}/reactivar")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('PERM_CATALOGOS_ADMINISTRAR')")
     public ResponseEntity<CampanaResponse> reactivar(@PathVariable Long id) {
         return ResponseEntity.ok(campanaService.reactivar(id));
     }

@@ -35,21 +35,21 @@ public class ProductoController {
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('PERM_CATALOGOS_ADMINISTRAR')")
     public ResponseEntity<ProductoResponse> crear(@Valid @RequestBody ProductoRequest request) {
         ProductoResponse creado = productoService.crear(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(creado);
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('PERM_CATALOGOS_ADMINISTRAR')")
     public ResponseEntity<ProductoResponse> actualizar(@PathVariable Long id,
                                                          @Valid @RequestBody ProductoRequest request) {
         return ResponseEntity.ok(productoService.actualizar(id, request));
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('PERM_CATALOGOS_ADMINISTRAR')")
     public ResponseEntity<Void> desactivar(@PathVariable Long id) {
         productoService.desactivar(id);
         return ResponseEntity.noContent().build();

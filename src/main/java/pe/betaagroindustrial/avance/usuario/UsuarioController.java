@@ -31,27 +31,27 @@ public class UsuarioController {
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('PERM_SUPERVISORES_ADMINISTRAR')")
     public ResponseEntity<UsuarioResumenResponse> crearSupervisor(@Valid @RequestBody SupervisorRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(usuarioService.crearSupervisor(request));
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('PERM_SUPERVISORES_ADMINISTRAR')")
     public ResponseEntity<UsuarioResumenResponse> actualizarSupervisor(
             @PathVariable Long id, @Valid @RequestBody SupervisorRequest request) {
         return ResponseEntity.ok(usuarioService.actualizarSupervisor(id, request));
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('PERM_SUPERVISORES_ADMINISTRAR')")
     public ResponseEntity<Void> desactivar(@PathVariable Long id) {
         usuarioService.desactivar(id);
         return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/{id}/reactivar")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('PERM_SUPERVISORES_ADMINISTRAR')")
     public ResponseEntity<UsuarioResumenResponse> reactivar(@PathVariable Long id) {
         return ResponseEntity.ok(usuarioService.reactivar(id));
     }

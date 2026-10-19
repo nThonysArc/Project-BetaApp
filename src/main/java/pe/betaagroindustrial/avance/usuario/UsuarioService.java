@@ -67,6 +67,7 @@ public class UsuarioService {
                 .passwordHash(passwordEncoder.encode(password))
                 .rol(Rol.SUPERVISOR)
                 .activo(true)
+                .permisos(new java.util.HashSet<>(PlantillasPermisos.de(Rol.SUPERVISOR)))
                 .build();
 
         return toResponse(usuarioRepository.save(supervisor));

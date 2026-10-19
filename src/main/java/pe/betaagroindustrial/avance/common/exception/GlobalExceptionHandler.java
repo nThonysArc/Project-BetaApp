@@ -45,6 +45,13 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.UNAUTHORIZED, "Email o contrasena incorrectos", req, null);
     }
 
+    @ExceptionHandler(org.springframework.security.access.AccessDeniedException.class)
+    public ResponseEntity<ErrorResponse> handleAccessDenied(
+            org.springframework.security.access.AccessDeniedException ex, HttpServletRequest req) {
+        // Sin este handler, el ExceptionHandler(Exception) de abajo convertiria un acceso denegado en 500.
+        return build(HttpStatus.FORBIDDEN, "No tienes permiso para realizar esta accion.", req, null);
+    }
+
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ErrorResponse> handleDataIntegrityViolation(
             DataIntegrityViolationException ex, HttpServletRequest req) {

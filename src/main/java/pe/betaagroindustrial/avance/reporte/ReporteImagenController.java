@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -16,6 +17,7 @@ public class ReporteImagenController {
 
     private final ReporteImagenService reporteImagenService;
 
+    @PreAuthorize("hasAuthority('PERM_REPORTE_VER')")
     @GetMapping
     public ResponseEntity<byte[]> obtenerImagen(@PathVariable Long procesoDiarioId) {
         byte[] png = reporteImagenService.generarPng(procesoDiarioId);

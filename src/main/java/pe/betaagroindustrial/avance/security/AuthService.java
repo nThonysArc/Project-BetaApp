@@ -37,7 +37,8 @@ public class AuthService {
                 token,
                 usuario.getEmail(),
                 usuario.getNombreCompleto(),
-                usuario.getRol().name()
+                usuario.getRol().name(),
+                usuario.permisosEfectivos().stream().map(Enum::name).sorted().toList()
         );
     }
 }

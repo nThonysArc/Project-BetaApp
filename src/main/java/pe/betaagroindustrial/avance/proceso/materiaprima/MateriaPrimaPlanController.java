@@ -3,6 +3,7 @@ package pe.betaagroindustrial.avance.proceso.materiaprima;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import pe.betaagroindustrial.avance.proceso.materiaprima.dto.IngresoMateriaPrimaRequest;
 import pe.betaagroindustrial.avance.proceso.materiaprima.dto.IngresoMateriaPrimaResponse;
@@ -21,11 +22,13 @@ public class MateriaPrimaPlanController {
 
     private final MateriaPrimaPlanService materiaPrimaPlanService;
 
+    @PreAuthorize("hasAuthority('PERM_MATERIA_PRIMA_VER')")
     @GetMapping
     public ResponseEntity<List<IngresoMateriaPrimaResponse>> listar(@PathVariable Long procesoDiarioId) {
         return ResponseEntity.ok(materiaPrimaPlanService.listar(procesoDiarioId));
     }
 
+    @PreAuthorize("hasAuthority('PERM_MATERIA_PRIMA_EDITAR')")
     @PutMapping
     public ResponseEntity<IngresoMateriaPrimaResponse> actualizar(
             @PathVariable Long procesoDiarioId,
