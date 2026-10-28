@@ -27,17 +27,30 @@ class ReporteVidRendererTest {
     }
 
     @Test
-    void lasHorasSeMuestranEnDoceHorasConAmPmCorrecto() {
-        assertEquals("08:50 AM a 09:50 AM", ReporteVidRenderer.rangoHora(t(8, 50), t(9, 50)));
-        assertEquals("12:00 PM a 01:00 PM", ReporteVidRenderer.rangoHora(t(12, 0), t(13, 0)));
-        assertEquals("12:15 AM a 01:15 AM", ReporteVidRenderer.rangoHora(t(0, 15), t(1, 15)));
+    void lasHorasSeMuestranEnVeinticuatroHoras() {
+        assertEquals("08:50\nA\n09:50", ReporteVidRenderer.rangoHora(t(8, 50), t(9, 50)));
+        assertEquals("14:15\nA\n15:15", ReporteVidRenderer.rangoHora(t(14, 15), t(15, 15)));
+        assertEquals("00:15\nA\n01:15", ReporteVidRenderer.rangoHora(t(0, 15), t(1, 15)));
+    }
+
+    @Test
+    void hayArrastreSoloSiSeProcesaFrutaDeMasDeUnDiaDeCosecha() {
+        AvanceVid.Contexto ctx = new AvanceVid.Contexto(D28, BigDecimal.valueOf(1000), BigDecimal.ZERO, BigDecimal.ZERO);
+
+        AvanceVid.Resultado mismoDia = AvanceVid.calcular(List.of(
+                hora(1, t(8, 0), t(9, 0), D28, modulo(1, 10, 100, "ANA", null))), ctx);
+        AvanceVid.Resultado variosDias = AvanceVid.calcular(List.of(
+                hora(1, t(8, 0), t(9, 0), D27, modulo(1, 10, 100, "ANA", null)),
+                hora(2, t(9, 0), t(10, 0), D28, modulo(1, 10, 110, "ANA", null))), ctx);
+
+        assertTrue(!ReporteVidRenderer.conArrastre(mismoDia));
+        assertTrue(ReporteVidRenderer.conArrastre(variosDias));
     }
 
     private static byte[] png(List<AvanceVid.HoraVid> horas) {
         AvanceVid.Contexto ctx = new AvanceVid.Contexto(D28, BigDecimal.valueOf(1000), BigDecimal.ZERO, BigDecimal.ZERO);
         AvanceVid.Resultado r = AvanceVid.calcular(horas, ctx);
         return ReporteVidRenderer.renderizarPng(
-                new ReporteVidRenderer.Entrada("AVANCE POR HORA DE SELECCIÓN VID 2025", D28, r,
-                        ValidadorAvanceVid.validar(horas, r), null), 1.0);
+                new ReporteVidRenderer.Entrada("AVANCE POR HORA DE SELECCIÓN VID 2025", D28, r, null, null, null), 1.0);
     }
 }

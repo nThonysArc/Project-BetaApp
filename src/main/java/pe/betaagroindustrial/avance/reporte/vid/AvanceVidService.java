@@ -23,6 +23,7 @@ import pe.betaagroindustrial.avance.usuario.Usuario;
 import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigDecimal;
+import java.text.Normalizer;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
@@ -40,7 +41,9 @@ import java.util.Map;
 public class AvanceVidService {
 
     private static final double ESCALA = 2.0;
-    private static final String RUTA_LOGO = "/reporte/logo-beta.png";
+    /** Logo con fondo transparente: sobre el blanco del reporte VID no deja recuadro. */
+    private static final String RUTA_LOGO = "/reporte/logo-beta-transparente.png";
+    private static final String RUTA_FOTO = "/reporte/producto-%s.png";
 
     private final ProcesoDiarioRepository procesoDiarioRepository;
     private final CorteRepository corteRepository;
@@ -69,10 +72,12 @@ public class AvanceVidService {
     public byte[] generarPng(ProcesoDiario proceso) {
         Calculo c = calcular(proceso);
         Short anio = proceso.getCampana().getAnio();
-        String producto = proceso.getCampana().getProducto().getNombre().toUpperCase(Locale.ROOT);
-        String titulo = "AVANCE POR HORA DE SELECCIÓN " + producto + (anio != null ? " " + anio : "");
+        String nombreProducto = proceso.getCampana().getProducto().getNombre();
+        String producto = nombreProducto;
+        String titulo = "AVANCE POR HORA DE SELECCIÓN " + producto.toUpperCase(Locale.ROOT) + (anio != null ? " " + anio : "");
         return ReporteVidRenderer.renderizarPng(
-                new ReporteVidRenderer.Entrada(titulo, proceso.getFecha(), c.resultado(), c.advertencias(), leerLogo()),
+                new ReporteVidRenderer.Entrada(titulo, proceso.getFecha(), c.resultado(), leerRecurso(RUTA_LOGO),
+                        leerFoto(producto, "-izq"), leerFoto(producto, "")),
                 ESCALA);
     }
 
@@ -138,11 +143,26 @@ public class AvanceVidService {
                 modulos);
     }
 
-    private byte[] leerLogo() {
-        try (InputStream in = AvanceVidService.class.getResourceAsStream(RUTA_LOGO)) {
+    /** Fotos del producto: "Vid" -> /reporte/producto-vid.png y producto-vid-izq.png (null si no existen; el reporte las omite). */
+    private byte[] leerFoto(String producto, String sufijo) {
+        String slug = Normalizer.normalize(producto, Normalizer.Form.NFD)
+                .replaceAll("\\p{M}", "")
+                .toLowerCase(Locale.ROOT)
+                .replaceAll("[^a-z0-9]+", "-")
+                .replaceAll("(^-|-$)", "");
+        byte[] foto = leerRecurso(RUTA_FOTO.formatted(slug + sufijo));
+        if (foto == null && slug.endsWith("s")) {
+            foto = leerRecurso(RUTA_FOTO.formatted(slug.substring(0, slug.length() - 1) + sufijo));
+        }
+        // Sin foto propia del lado izquierdo, se reutiliza la derecha (o ninguna).
+        return foto == null && !sufijo.isEmpty() ? leerFoto(producto, "") : foto;
+    }
+
+    private byte[] leerRecurso(String ruta) {
+        try (InputStream in = AvanceVidService.class.getResourceAsStream(ruta)) {
             return in == null ? null : in.readAllBytes();
         } catch (IOException e) {
-            log.warn("No se pudo leer el logo {}", RUTA_LOGO, e);
+            log.warn("No se pudo leer el recurso {}", ruta, e);
             return null;
         }
     }

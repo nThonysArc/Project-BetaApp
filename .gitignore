@@ -31,3 +31,7 @@ build/
 
 ### VS Code ###
 .vscode/
+
+### Parches y capturas de ejemplo locales (raiz del repo, no versionar) ###
+/*.patch
+/ejemplo-*.png
