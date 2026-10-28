@@ -33,6 +33,11 @@ public class Producto extends Auditable {
     @Builder.Default
     private String unidadMedida = "KG";
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "plantilla_reporte", nullable = false, length = 20)
+    @Builder.Default
+    private PlantillaReporte plantillaReporte = PlantillaReporte.ARANDANO;
+
     @Column(name = "activo", nullable = false)
     @Builder.Default
     private boolean activo = true;

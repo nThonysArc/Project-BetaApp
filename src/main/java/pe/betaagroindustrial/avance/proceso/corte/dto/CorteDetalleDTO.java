@@ -15,7 +15,7 @@ public record CorteDetalleDTO(
         UUID clienteUuid,
         @NotNull Long maquinaId,
         String maquinaNombre,
-        @NotNull Long maquinaKatoId,
+        Long maquinaKatoId,
         String katoNombre,
         @NotNull Long variedadId,
         String variedadNombre,

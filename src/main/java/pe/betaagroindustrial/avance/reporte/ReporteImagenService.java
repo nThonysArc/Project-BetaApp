@@ -18,6 +18,7 @@ import pe.betaagroindustrial.avance.reporte.ReporteDatos.CorteReporte;
 import pe.betaagroindustrial.avance.reporte.ReporteDatos.FilaReporte;
 import pe.betaagroindustrial.avance.reporte.ReporteDatos.LoteReporte;
 import pe.betaagroindustrial.avance.reporte.ReporteDatos.MaquinaCorteReporte;
+import pe.betaagroindustrial.avance.reporte.vid.AvanceVidService;
 import pe.betaagroindustrial.avance.usuario.Usuario;
 
 import java.io.IOException;
@@ -53,11 +54,17 @@ public class ReporteImagenService {
     private final ProcesoDiarioRepository procesoDiarioRepository;
     private final CorteRepository corteRepository;
     private final MateriaPrimaPlanRepository materiaPrimaPlanRepository;
+    private final AvanceVidService avanceVidService;
 
     @Transactional(readOnly = true)
     public byte[] generarPng(Long procesoDiarioId) {
         ProcesoDiario proceso = procesoDiarioRepository.findById(procesoDiarioId)
                 .orElseThrow(() -> ResourceNotFoundException.of("ProcesoDiario", procesoDiarioId));
+
+        // Cada producto elige su plantilla: Vid dibuja su propio formato, el resto usa el de arandano.
+        if (AvanceVidService.usaPlantillaVid(proceso)) {
+            return avanceVidService.generarPng(proceso);
+        }
 
         List<MateriaPrimaPlan> ingresos = materiaPrimaPlanRepository
                 .findByProcesoDiarioIdOrderByOrdenAsc(procesoDiarioId);
@@ -103,7 +110,7 @@ public class ReporteImagenService {
             filas.add(new FilaReporte(
                     d.getMaquina().getId(),
                     d.getMaquina().getNombre(),
-                    d.getMaquinaKato().getNombre(),
+                    d.getMaquinaKato() != null ? d.getMaquinaKato().getNombre() : "",
                     d.getVariedad().getNombre(),
                     d.getJabas(),
                     d.getPesoTotal(),

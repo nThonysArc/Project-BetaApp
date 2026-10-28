@@ -43,8 +43,9 @@ public class CorteDetalle extends Auditable {
     @JoinColumn(name = "maquina_id", nullable = false)
     private Maquina maquina;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "maquina_kato_id", nullable = false)
+    /** Opcional: los productos sin katos (Vid) registran solo maquina/modulo + variedad. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "maquina_kato_id")
     private MaquinaKato maquinaKato;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)

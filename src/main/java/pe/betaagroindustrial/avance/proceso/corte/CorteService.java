@@ -85,8 +85,8 @@ public class CorteService {
                         null,
                         d.getMaquina().getId(),
                         d.getMaquina().getNombre(),
-                        d.getMaquinaKato().getId(),
-                        d.getMaquinaKato().getNombre(),
+                        d.getMaquinaKato() != null ? d.getMaquinaKato().getId() : null,
+                        d.getMaquinaKato() != null ? d.getMaquinaKato().getNombre() : null,
                         d.getVariedad().getId(),
                         d.getVariedad().getNombre(),
                         BigDecimal.ZERO,
@@ -252,7 +252,9 @@ public class CorteService {
             Maquina maquina = maquinaRepository.findById(d.maquinaId())
                     .orElseThrow(() -> ResourceNotFoundException.of("Maquina", d.maquinaId()));
 
-            MaquinaKato maquinaKato = maquinaKatoRepository.findById(d.maquinaKatoId())
+            // El kato es opcional (Vid no lo usa); si se indica, debe existir.
+            MaquinaKato maquinaKato = d.maquinaKatoId() == null ? null
+                    : maquinaKatoRepository.findById(d.maquinaKatoId())
                     .orElseThrow(() -> ResourceNotFoundException.of("MaquinaKato", d.maquinaKatoId()));
 
             Variedad variedad = variedadRepository.findById(d.variedadId())
@@ -505,7 +507,8 @@ public class CorteService {
                 .map(d -> new CorteDetalleDTO(
                         d.getClienteUuid(),
                         d.getMaquina().getId(), d.getMaquina().getNombre(),
-                        d.getMaquinaKato().getId(), d.getMaquinaKato().getNombre(),
+                        d.getMaquinaKato() != null ? d.getMaquinaKato().getId() : null,
+                        d.getMaquinaKato() != null ? d.getMaquinaKato().getNombre() : null,
                         d.getVariedad().getId(), d.getVariedad().getNombre(),
                         d.getJabas(), d.getPesoTotal(),
                         d.getEmpacadores(), d.getKgPorEmpacador(),

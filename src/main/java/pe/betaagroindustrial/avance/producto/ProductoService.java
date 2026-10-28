@@ -35,6 +35,9 @@ public class ProductoService {
         if (producto.getUnidadMedida() == null) {
             producto.setUnidadMedida("KG");
         }
+        if (producto.getPlantillaReporte() == null) {
+            producto.setPlantillaReporte(PlantillaReporte.ARANDANO);
+        }
         producto.setActivo(true);
         return productoMapper.toResponse(productoRepository.save(producto));
     }
