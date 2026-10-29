@@ -17,8 +17,18 @@ RUN mvn clean package -DskipTests -B
 FROM eclipse-temurin:21-jre-jammy
 WORKDIR /app
 
+# fontconfig + DejaVu: Java2D (generacion del PNG del reporte) las necesita en
+# un contenedor minimo, aunque el renderer ya incluya sus propias fuentes.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends fontconfig fonts-dejavu-core \
+ && rm -rf /var/lib/apt/lists/*
+
 RUN addgroup --system spring && adduser --system --ingroup spring spring
 USER spring:spring
+
+# headless: no hay pantalla. MaxRAMPercentage: la JVM respeta el limite del contenedor.
+ENV TZ=America/Lima \
+    JAVA_TOOL_OPTIONS="-Djava.awt.headless=true -XX:MaxRAMPercentage=75"
 
 # Wildcard en vez de nombre exacto: evita que el build se rompa cada vez
 # que cambie la version en pom.xml o el finalName del jar generado.
