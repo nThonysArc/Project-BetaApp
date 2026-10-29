@@ -66,6 +66,16 @@ public class ReporteImagenService {
             return avanceVidService.generarPng(proceso);
         }
 
+        return ReporteExcelRenderer.renderizarPng(construirDatos(proceso), ESCALA);
+    }
+
+    /**
+     * Datos planos del reporte de arandano para un proceso. Los comparten la imagen PNG y la vista web en
+     * vivo, asi ambas muestran siempre exactamente los mismos numeros.
+     */
+    @Transactional(readOnly = true)
+    public ReporteDatos construirDatos(ProcesoDiario proceso) {
+        Long procesoDiarioId = proceso.getId();
         List<MateriaPrimaPlan> ingresos = materiaPrimaPlanRepository
                 .findByProcesoDiarioIdOrderByOrdenAsc(procesoDiarioId);
         List<Corte> cortes = corteRepository
@@ -79,8 +89,7 @@ public class ReporteImagenService {
                 cortes.stream().map(c -> mapearCorte(c, proceso)).toList(),
                 leerRecurso(RUTA_LOGO),
                 leerFoto(producto));
-
-        return ReporteExcelRenderer.renderizarPng(datos, ESCALA);
+        return datos;
     }
 
     // ==========================================================
