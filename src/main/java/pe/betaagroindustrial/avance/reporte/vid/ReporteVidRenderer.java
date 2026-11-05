@@ -1,5 +1,6 @@
 package pe.betaagroindustrial.avance.reporte.vid;
 
+import pe.betaagroindustrial.avance.reporte.ReporteExcelRenderer;
 import pe.betaagroindustrial.avance.reporte.vid.AvanceVid.BloqueHora;
 import pe.betaagroindustrial.avance.reporte.vid.AvanceVid.FilaModulo;
 import pe.betaagroindustrial.avance.reporte.vid.AvanceVid.ProcesadoDia;
@@ -96,6 +97,7 @@ public final class ReporteVidRenderer {
         double alto = pintar(gm, e);
         gm.dispose();
 
+        escala = ReporteExcelRenderer.escalaSegura(LIENZO, alto, escala);
         int pw = (int) Math.round(LIENZO * escala);
         int ph = (int) Math.ceil(alto * escala);
         BufferedImage img = new BufferedImage(pw, ph, BufferedImage.TYPE_INT_RGB);

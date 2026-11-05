@@ -105,6 +105,19 @@ public final class ReporteExcelRenderer {
     // API
     // =====================================================================
 
+    /** Tope de pixeles de la imagen (~64 MB en memoria): evita agotar la memoria del servidor en reportes muy largos. */
+    private static final double MAX_PIXELES = 16_000_000;
+    private static final double ESCALA_MINIMA = 1.5;
+
+    /**
+     * La escala pedida (3.0 = 3 pixeles por unidad de diseno), reducida solo si el reporte es tan largo
+     * que superaria el tope de pixeles. Nunca baja de {@link #ESCALA_MINIMA}.
+     */
+    public static double escalaSegura(double ancho, double alto, double escala) {
+        double maxPorTope = Math.sqrt(MAX_PIXELES / (ancho * alto));
+        return Math.max(ESCALA_MINIMA, Math.min(escala, maxPorTope));
+    }
+
     public static byte[] renderizarPng(ReporteDatos datos, double escala) {
         BufferedImage medida = new BufferedImage(1, 1, BufferedImage.TYPE_INT_RGB);
         Graphics2D gm = medida.createGraphics();
@@ -112,6 +125,7 @@ public final class ReporteExcelRenderer {
         Diseno diseno = new Diseno(datos, new Pintor(gm));
         gm.dispose();
 
+        escala = escalaSegura(ANCHO, diseno.altoTotal, escala);
         int pw = (int) Math.round(ANCHO * escala);
         int ph = (int) Math.ceil(diseno.altoTotal * escala);
         BufferedImage imagen = new BufferedImage(pw, ph, BufferedImage.TYPE_INT_RGB);
@@ -505,10 +519,12 @@ public final class ReporteExcelRenderer {
                     Grupo g = b.grupos.get(gi);
                     double rowH = g.alto / g.filas.size();
 
-                    // Separador entre maquinas (no en HORA/FECHA/TOTAL/ACUM)
+                    // Separador entre maquinas (no en HORA/FECHA/TOTAL/ACUM). Con observacion GENERAL la
+                    // columna OBSERVACION es una sola celda para toda la hora: el separador no la cruza
+                    // (si no, la linea atraviesa el texto, p. ej. "PROCESO FINAL").
                     if (gi > 0) {
                         p.lineaH(C[VARIEDAD], C[TOTAL_HORA], y, LINEA, 0.8);
-                        p.lineaH(C[MAQUINA], C[13], y, LINEA, 0.8);
+                        p.lineaH(C[MAQUINA], b.lineasObsGeneral != null ? C[OBS] : C[13], y, LINEA, 0.8);
                     }
 
                     // VARIEDAD combinada por tramos consecutivos iguales

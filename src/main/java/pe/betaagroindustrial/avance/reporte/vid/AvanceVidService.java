@@ -40,7 +40,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class AvanceVidService {
 
-    private static final double ESCALA = 2.0;
+    private static final double ESCALA = 3.0;
     /** Logo con fondo transparente: sobre el blanco del reporte VID no deja recuadro. */
     private static final String RUTA_LOGO = "/reporte/logo-beta-transparente.png";
     private static final String RUTA_FOTO = "/reporte/producto-%s.png";

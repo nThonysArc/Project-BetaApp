@@ -45,8 +45,8 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class ReporteImagenService {
 
-    /** Factor de escala de salida: 2.0 = el doble de nitidez que la captura de Excel. */
-    private static final double ESCALA = 2.0;
+    /** Factor de escala de salida: 3.0 = el triple de nitidez que la captura de Excel (se reduce solo en reportes muy largos). */
+    private static final double ESCALA = 3.0;
 
     private static final String RUTA_LOGO = "/reporte/logo-beta.png";
     private static final String RUTA_FOTO = "/reporte/producto-%s.png";
@@ -114,9 +114,9 @@ public class ReporteImagenService {
         detalles.sort(Comparator.comparing((CorteDetalle d) -> d.getOrden() == null ? 0 : d.getOrden())
                 .thenComparing(d -> d.getId() == null ? 0L : d.getId()));
 
-        List<FilaReporte> filas = new ArrayList<>();
+        List<FilaReporte> filasPorVariedad = new ArrayList<>();
         for (CorteDetalle d : detalles) {
-            filas.add(new FilaReporte(
+            filasPorVariedad.add(new FilaReporte(
                     d.getMaquina().getId(),
                     d.getMaquina().getNombre(),
                     d.getMaquinaKato() != null ? d.getMaquinaKato().getNombre() : "",
@@ -126,6 +126,7 @@ public class ReporteImagenService {
                     d.getEmpacadores() == null ? 0 : d.getEmpacadores(),
                     d.getKgPorEmpacador()));
         }
+        List<FilaReporte> filas = fusionarPorKato(filasPorVariedad);
 
         // Supervisor/observacion por maquina: fila propia del corte; si falta, el sugerido de la maquina.
         Map<Long, MaquinaCorteReporte> porMaquina = new LinkedHashMap<>();
@@ -148,6 +149,47 @@ public class ReporteImagenService {
                 corte.getPesoTotalEfectivo(),
                 filas,
                 new ArrayList<>(porMaquina.values()));
+    }
+
+    /**
+     * Una Kato que en la misma hora trabajo varias variedades se muestra como UNA sola fila:
+     * variedades unidas ("VENTURA/SEKOYA"), jabas y peso sumados. El detalle por variedad se sigue
+     * guardando en el corte; esto solo cambia como se lee el reporte. Empacadores no se suman ni se
+     * "elige el mayor": es UN solo equipo por kato (el formulario ya pide una sola cantidad), asi que
+     * se toma el de la primera fila de la kato y kg/empacador se recalcula con el peso total.
+     * Respeta el orden de aparicion de maquinas y katos.
+     */
+    static List<FilaReporte> fusionarPorKato(List<FilaReporte> filas) {
+        Map<String, List<FilaReporte>> grupos = new LinkedHashMap<>();
+        for (FilaReporte f : filas) {
+            grupos.computeIfAbsent(f.maquinaId() + "|" + f.kato(), k -> new ArrayList<>()).add(f);
+        }
+        List<FilaReporte> resultado = new ArrayList<>();
+        for (List<FilaReporte> g : grupos.values()) {
+            if (g.size() == 1) {
+                resultado.add(g.get(0));
+                continue;
+            }
+            FilaReporte primera = g.get(0);
+            java.math.BigDecimal jabas = java.math.BigDecimal.ZERO;
+            java.math.BigDecimal peso = java.math.BigDecimal.ZERO;
+            int empacadores = 0;
+            java.util.LinkedHashSet<String> variedades = new java.util.LinkedHashSet<>();
+            for (FilaReporte f : g) {
+                if (f.jabas() != null) jabas = jabas.add(f.jabas());
+                if (f.peso() != null) peso = peso.add(f.peso());
+                if (empacadores == 0) {
+                    empacadores = f.empacadores();
+                }
+                variedades.add(f.variedad());
+            }
+            java.math.BigDecimal kgEmp = empacadores > 0
+                    ? peso.divide(java.math.BigDecimal.valueOf(empacadores), 2, java.math.RoundingMode.HALF_UP)
+                    : java.math.BigDecimal.ZERO;
+            resultado.add(new FilaReporte(primera.maquinaId(), primera.maquina(), primera.kato(),
+                    String.join("/", variedades), jabas, peso, empacadores, kgEmp));
+        }
+        return resultado;
     }
 
     private String nombre(Usuario u) {
