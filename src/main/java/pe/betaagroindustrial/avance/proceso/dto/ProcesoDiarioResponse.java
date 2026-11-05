@@ -1,5 +1,6 @@
 package pe.betaagroindustrial.avance.proceso.dto;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 
 /**
@@ -14,6 +15,9 @@ public record ProcesoDiarioResponse(
         String campanaNombre,
         LocalDate fecha,
         String estado,
-        int totalCortes
+        int totalCortes,
+        BigDecimal proyeccionJabas,
+        BigDecimal stockAnteriorJabas,
+        LocalDate stockAnteriorFecha
 ) {
 }

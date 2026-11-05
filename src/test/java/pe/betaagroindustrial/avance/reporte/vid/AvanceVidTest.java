@@ -6,6 +6,7 @@ import pe.betaagroindustrial.avance.reporte.vid.AvanceVid.HoraVid;
 import pe.betaagroindustrial.avance.reporte.vid.AvanceVid.Resultado;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -106,6 +107,37 @@ class AvanceVidTest {
     }
 
     @Test
+    void elStockDigitadoAManoReemplazaAlDeducidoDelHistorial() {
+        // El historial diria 500 - 200 = 300, pero el supervisor digito 700 (del 03/11): manda lo digitado.
+        LocalDate fecha = LocalDate.of(2026, 11, 4);
+        Contexto c = new Contexto(fecha, n(1000), n(500), n(200), null, n(700), fecha.minusDays(1));
+        Resultado r = AvanceVid.calcular(dosHoras, c);
+
+        assertEquals(n(700), r.stockAnterior());
+        assertEquals(fecha.minusDays(1), r.stockAnteriorFecha());
+        assertEquals(n(1000), r.ingresoDia());
+        assertEquals(n(1400), r.stock()); // 700 + 1000 - 300 procesado hoy
+    }
+
+    @Test
+    void sinStockDigitadoSeDeduceDelHistorialYNoLlevaFecha() {
+        Resultado r = AvanceVid.calcular(dosHoras, ctx(1000, 500, 200));
+
+        assertEquals(n(300), r.stockAnterior());
+        assertNull(r.stockAnteriorFecha());
+    }
+
+    @Test
+    void elStockDeDiasPreviosQuedaSeparadoDelIngresoDelDia() {
+        // Ayer ingresaron 500 y se procesaron 200: quedan 300 de stock. Hoy ingresan 1000 y se procesan 300.
+        Resultado r = AvanceVid.calcular(dosHoras, ctx(1000, 500, 200));
+
+        assertEquals(n(300), r.stockAnterior());
+        assertEquals(n(1000), r.ingresoDia());
+        assertEquals(r.stock(), r.stockAnterior().add(r.ingresoDia()).subtract(r.procesadoDia()));
+    }
+
+    @Test
     void unTotalAjustadoManualMandaSobreLaSumaDeModulos() {
         HoraVid ajustada = new HoraVid(1, t(8, 0), t(9, 0), D28, n(999), List.of(modulo(1, 10, 100, "ANA", null)));
 
@@ -113,5 +145,20 @@ class AvanceVidTest {
 
         assertEquals(n(999), r.procesadoDia());
         assertEquals(n(100), r.totalSupervisores());
+    }
+
+    @Test
+    void laProyeccionDigitadaSeMuestraAparteDelIngreso() {
+        Contexto ctx = new Contexto(D28, n(4529), BigDecimal.ZERO, BigDecimal.ZERO, n(4000));
+        Resultado r = AvanceVid.calcular(List.of(), ctx);
+        assertEquals(0, n(4000).compareTo(r.proyeccion()), "la proyeccion es la digitada, no el ingreso");
+        assertEquals(0, n(4529).compareTo(r.stock()), "el stock sigue saliendo del ingreso real");
+    }
+
+    @Test
+    void sinProyeccionDigitadaSeUsaElIngresoDelDia() {
+        Contexto ctx = new Contexto(D28, n(4529), BigDecimal.ZERO, BigDecimal.ZERO);
+        Resultado r = AvanceVid.calcular(List.of(), ctx);
+        assertEquals(0, n(4529).compareTo(r.proyeccion()));
     }
 }

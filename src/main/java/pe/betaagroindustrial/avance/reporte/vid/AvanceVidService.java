@@ -106,7 +106,10 @@ public class AvanceVidService {
                 proceso.getFecha(),
                 ingresoDia,
                 materiaPrimaPlanRepository.sumarJabasAnteriores(campanaId, proceso.getFecha()),
-                corteRepository.sumarJabasAnteriores(campanaId, proceso.getFecha()));
+                corteRepository.sumarJabasAnteriores(campanaId, proceso.getFecha()),
+                proceso.getProyeccionJabas(),
+                proceso.getStockAnteriorJabas(),
+                proceso.getStockAnteriorFecha());
 
         Resultado resultado = AvanceVid.calcular(horas, ctx);
         return new Calculo(proceso, horas, resultado, ValidadorAvanceVid.validar(horas, resultado));

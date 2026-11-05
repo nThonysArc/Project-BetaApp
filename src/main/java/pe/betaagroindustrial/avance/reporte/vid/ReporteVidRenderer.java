@@ -63,6 +63,10 @@ public final class ReporteVidRenderer {
     private static final Color ROSA_FUERTE = new Color(236, 200, 208);
     private static final Color ROSA_BORDE = new Color(214, 170, 180);
     private static final Color NEGRO = Color.BLACK;
+    /** Rejilla de la plantilla: negro suave y fino en TODAS las celdas (tambien el borde derecho). */
+    private static final Color GRILLA = new Color(30, 30, 30);
+    private static final double GRUESO = 1.3;
+    private static final double FINO = 0.5;
     private static final Color BLANCO = Color.WHITE;
 
     // ---- Geometria (unidades de plantilla) -------------------------------------------------
@@ -72,9 +76,9 @@ public final class ReporteVidRenderer {
     private static final double DESPLAZAMIENTO = -60;
     private static final double LIENZO = 822;
     /** Una hora con pocos modulos no se achica por debajo de esto (como las filas altas de la plantilla). */
-    private static final double MIN_BLOQUE = 50;
+    private static final double MIN_BLOQUE = 38.5;
     private static final float FUENTE_DATO = 7.4f;
-    private static final float FUENTE_OBS = 7.1f;
+    private static final float FUENTE_OBS = 6.4f;
     /** Bordes de columna de la tabla: HORA | MODULO | PERSONAS | JABAS/HORA | TOTAL | ACUM | REND | OBS. */
     private static final double[] E = {131, 179.5, 249.5, 339, 412.5, 491.5, 571.5, 641, 840};
     private static final int C_HORA = 0, C_MODULO = 1, C_PERSONAS = 2, C_JABAS = 3, C_TOTAL = 4,
@@ -82,7 +86,7 @@ public final class ReporteVidRenderer {
 
     private static final double ALTO_ENCABEZADO = 30;
     private static final double ALTO_FILA = 33;
-    private static final double LINEA_OBS = 9.2;
+    private static final double LINEA_OBS = 10.8;
 
     private static final Font REGULAR = cargar("DejaVuSans.ttf", Font.PLAIN);
     private static final Font NEGRITA = cargar("DejaVuSans-Bold.ttf", Font.BOLD);
@@ -161,15 +165,23 @@ public final class ReporteVidRenderer {
     private static double indicadores(Graphics2D g, Resultado r) {
         double y = 77;
         y = renglonIndicador(g, y, "PROYECCION", plano(r.proyeccion()));
+        // El stock que quedo de dias previos va aparte del ingreso del dia: son fruta distinta.
+        // Solo si de verdad quedo fruta: con 0 (o sin dato) la fila no aparece.
+        if (r.stockAnterior().signum() > 0) {
+            String etiqueta = r.stockAnteriorFecha() == null
+                    ? "STOCK ANTERIOR" : "STOCK ANTERIOR " + fechaCorta(r.stockAnteriorFecha());
+            y = renglonIndicador(g, y, etiqueta, plano(r.stockAnterior()));
+        }
+        y = renglonIndicador(g, y, "INGRESO HASTA EL MOMENTO", plano(r.ingresoDia()));
         if (conArrastre(r)) {
             List<ProcesadoDia> dias = new ArrayList<>(r.porDia());
             dias.sort((a, b) -> b.fecha().compareTo(a.fecha()));
             for (ProcesadoDia d : dias) {
+                if (d.jabas().signum() == 0) {
+                    continue;
+                }
                 y = renglonIndicador(g, y, fechaCorta(d.fecha()), plano(d.jabas()));
             }
-        } else {
-            BigDecimal ingreso = r.stock().add(r.totalAcumulado());
-            y = renglonIndicador(g, y, "INGRESO HASTA EL MOMENTO", plano(ingreso));
         }
         y = renglonIndicador(g, y + 5, "PROCESADO", num(r.procesadoDia()));
         y = renglonIndicador(g, y + 5, "STOCK TOTAL", plano(r.stock()));
@@ -178,12 +190,12 @@ public final class ReporteVidRenderer {
 
     private static double renglonIndicador(Graphics2D g, double y, String etiqueta, String valor) {
         double h = 13.5;
-        caja(g, 491.5, y, 149.5, h, GUINDA, null, 0);
+        caja(g, 491.5, y, 149.5, h, GUINDA, GRILLA, FINO);
         texto(g, etiqueta, 491.5, y, 149.5, h, 1, true, 7.9f, BLANCO, 0);
-        caja(g, 641, y, 90.5, h, BLANCO, NEGRO, 0.6);
+        caja(g, 641, y, 90.5, h, BLANCO, GRILLA, FINO);
         texto(g, valor, 641, y, 90.5, h, 1, true, 7.7f, NEGRO, 0);
-        caja(g, 731.5, y, 108.5, h, BLANCO, NEGRO, 0.6);
-        texto(g, "JABAS", 731.5, y, 108.5, h, 1, false, 7.7f, NEGRO, 0);
+        caja(g, 731.5, y, 108.5, h, BLANCO, GRILLA, FINO);
+        texto(g, "JABAS", 731.5, y, 108.5, h, 1, true, 7.7f, NEGRO, 0);
         return y + h;
     }
 
@@ -194,23 +206,33 @@ public final class ReporteVidRenderer {
         caja(g, x0, y0, ANCHO - x0, ALTO_ENCABEZADO, GUINDA, null, 0);
         String[] enc = {"HORA", "MODULO", "PERSONAS", "JABAS / HORA", "TOTAL JABAS\nPOR HORA", "ACUMULADO", "REND/\nPERSONA", "OBSERVACIONES"};
         for (int c = 0; c < enc.length; c++) {
-            if (c == C_OBS) {
-                texto(g, enc[c], E[c] + 9, y0, E[c + 1] - E[c] - 9, ALTO_ENCABEZADO, 0, true, 7.65f, BLANCO, 11);
-            } else {
-                texto(g, enc[c], E[c], y0, E[c + 1] - E[c], ALTO_ENCABEZADO, 1, true, 7.65f, BLANCO, 11);
-            }
-            if (c > 0) {
-                linea(g, E[c], y0, E[c], y0 + ALTO_ENCABEZADO, GUINDA_LINEA, 0.5, false);
-            }
+            texto(g, enc[c], E[c], y0, E[c + 1] - E[c], ALTO_ENCABEZADO, 1, true, 7.65f, BLANCO, 11);
         }
 
         double y = y0 + ALTO_ENCABEZADO;
+        List<Double> cortes = new ArrayList<>();
+        double yUltimo = y;
         for (BloqueHora b : r.bloques()) {
+            yUltimo = y;
             y = bloque(g, b, y);
+            cortes.add(y);
         }
 
-        // Marco negro grueso: lado izquierdo y borde superior/inferior de la tabla
-        linea(g, x0, y0, x0, y, NEGRO, 1.5, false);
+        // La rejilla se dibuja DESPUES de todos los rellenos: si no, el relleno de la hora siguiente
+        // tapa la mitad del borde de la anterior (asi se "comian" los marcos).
+        for (int c = 1; c < E.length - 1; c++) {
+            linea(g, E[c], y0, E[c], y, GRILLA, FINO, false);
+        }
+        linea(g, x0, y0, ANCHO, y0, GRILLA, FINO, false);                 // borde superior
+        linea(g, ANCHO, y0, ANCHO, y, GRILLA, FINO, false);               // borde derecho
+        linea(g, x0, y0 + ALTO_ENCABEZADO, ANCHO, y0 + ALTO_ENCABEZADO, GRILLA, FINO, false);
+        for (int i = 0; i < cortes.size() - 1; i++) {                      // separadores entre horas
+            linea(g, x0, cortes.get(i), ANCHO, cortes.get(i), GRILLA, FINO, false);
+        }
+        linea(g, x0, y0, x0, yUltimo, GRILLA, FINO, false);               // lado izquierdo
+        // Ultima hora: marco grueso a la izquierda y abajo, como en la plantilla
+        linea(g, x0, yUltimo, x0, y, NEGRO, GRUESO, false);
+        linea(g, x0, y, ANCHO, y, NEGRO, cortes.isEmpty() ? FINO : 0.9, false);
         return y;
     }
 
@@ -220,7 +242,7 @@ public final class ReporteVidRenderer {
         double total = 0;
         for (int i = 0; i < alturas.length; i++) {
             int lineas = i < filas.size() ? lineasObs(g, filas.get(i)) : 1;
-            alturas[i] = lineas <= 1 ? ALTO_FILA : ALTO_FILA + (lineas - 1) * LINEA_OBS * 1.1;
+            alturas[i] = lineas <= 1 ? ALTO_FILA : Math.max(ALTO_FILA, lineas * LINEA_OBS + 20);
             total += alturas[i];
         }
 
@@ -233,16 +255,13 @@ public final class ReporteVidRenderer {
         }
 
         caja(g, E[0], y, ANCHO - E[0], total, ROSA, null, 0);
-        for (int c = 1; c < E.length - 1; c++) {
-            linea(g, E[c], y, E[c], y + total, BLANCO, 0.6, false);
-        }
 
         // Numero de hora, fuera de la tabla, a la altura de la primera fila
         texto(g, String.valueOf(b.numero()), 0, y, 2 * 106, alturas[0], 1, true, 8.6f, NEGRO, 0);
         // Rango horario, centrado en el bloque
         texto(g, rangoHora(b.inicio(), b.fin()), E[C_HORA], y, E[C_MODULO] - E[C_HORA], total, 1, true, 7.2f, NEGRO, 12);
         // Total y acumulado de la hora (celdas combinadas)
-        texto(g, num(b.totalHora()), E[C_TOTAL], y, E[C_ACUM] - E[C_TOTAL], total, 1, true, FUENTE_DATO, NEGRO, 0);
+        texto(g, num(b.totalHora()), E[C_TOTAL], y, E[C_ACUM] - E[C_TOTAL], total, 1, false, FUENTE_DATO, NEGRO, 0);
         texto(g, num(b.acumulado()), E[C_ACUM], y, E[C_REND] - E[C_ACUM], total, 1, false, FUENTE_DATO, NEGRO, 0);
 
         double yy = y;
@@ -254,19 +273,16 @@ public final class ReporteVidRenderer {
             texto(g, plano(f.jabas()), E[C_JABAS], yy, E[C_TOTAL] - E[C_JABAS], h, 1, false, FUENTE_DATO, NEGRO, 0);
             texto(g, f.rendimiento() == null ? "0" : f.rendimiento().toPlainString(),
                     E[C_REND], yy, E[C_OBS] - E[C_REND], h, 1, false, FUENTE_DATO, NEGRO, 0);
-            texto(g, textoObs(f), E[C_OBS] + 4, yy, E[C_OBS + 1] - E[C_OBS] - 8, h, 1, false, FUENTE_OBS, NEGRO, LINEA_OBS);
+            observacion(g, textoObs(f), E[C_OBS] + 4, yy, E[C_OBS + 1] - E[C_OBS] - 8, h);
 
             if (i < filas.size() - 1) {
                 double yb = yy + h;
                 // MODULO..JABAS: punteado; REND y OBSERVACIONES: linea fina continua
-                linea(g, E[C_MODULO], yb, E[C_TOTAL], yb, NEGRO, 0.5, true);
-                linea(g, E[C_REND], yb, ANCHO, yb, NEGRO, 0.5, false);
+                linea(g, E[C_MODULO], yb, E[C_TOTAL], yb, GRILLA, FINO, true);
+                linea(g, E[C_REND], yb, ANCHO, yb, GRILLA, FINO, false);
             }
             yy += h;
         }
-
-        // Separador grueso entre horas
-        linea(g, E[0], y + total, ANCHO, y + total, NEGRO, 1.5, false);
         return y + total;
     }
 
@@ -288,11 +304,12 @@ public final class ReporteVidRenderer {
             caja(g, E[C_MODULO], y, E[C_TOTAL] - E[C_MODULO], 13, GUINDA_OSCURO, null, 0);
             texto(g, f[0], E[C_MODULO], y, E[C_JABAS] - E[C_MODULO], 13, 1, true, 7.8f, BLANCO, 0);
             texto(g, f[1], E[C_JABAS], y, E[C_TOTAL] - E[C_JABAS], 13, 1, true, 7.8f, BLANCO, 0);
-            linea(g, E[C_MODULO], y, E[C_TOTAL], y, GUINDA_LINEA, 0.5, false);
+            linea(g, E[C_MODULO], y, E[C_TOTAL], y, GRILLA, FINO, false);
             y += 13;
         }
-        linea(g, E[C_MODULO], y, E[C_TOTAL], y, GUINDA_LINEA, 0.5, false);
-        linea(g, E[C_JABAS], yTabla, E[C_JABAS], y, GUINDA_LINEA, 0.5, false);
+        linea(g, E[C_MODULO], y, E[C_TOTAL], y, GRILLA, FINO, false);
+        linea(g, E[C_JABAS], yTabla, E[C_JABAS], y, GRILLA, FINO, false);
+        caja(g, E[C_MODULO], yTabla, E[C_TOTAL] - E[C_MODULO], y - yTabla, null, GRILLA, FINO);
 
         if (!conArrastre(r)) {
             return y;
@@ -301,19 +318,19 @@ public final class ReporteVidRenderer {
         // Cuadro PROCESADO por dia (27.12 / 28.12 / total)
         double x = E[C_REND];
         double yBarra = yTabla + 73.5;
-        caja(g, x, yBarra, 160, 12.5, GUINDA, null, 0);
+        caja(g, x, yBarra, 160, 12.5, GUINDA, GRILLA, FINO);
         texto(g, "PROCESADO", x + 8, yBarra, 150, 12.5, 0, true, 7.9f, BLANCO, 0);
 
         double yy = yTabla + 106;
         for (ProcesadoDia d : r.porDia()) {
-            caja(g, x, yy, 69.5, 24.5, GUINDA, null, 0);
+            caja(g, x, yy, 69.5, 24.5, GUINDA, GRILLA, FINO);
             texto(g, "PROCESADO\n" + fechaPunto(d.fecha()), x, yy, 69.5, 24.5, 1, true, 6.2f, BLANCO, 11.5);
-            caja(g, E[C_OBS - 0] - 0, yy, 90.5, 24.5, BLANCO, NEGRO, 0.5);
+            caja(g, E[C_OBS], yy, 90.5, 24.5, BLANCO, GRILLA, FINO);
             texto(g, num(d.jabas()), E[C_OBS] + 2, yy + 5, 54, 18, 0, false, 7.7f, NEGRO, 0);
             texto(g, "JABAS", E[C_OBS] + 36, yy + 5, 52, 18, 2, false, 7.7f, NEGRO, 0);
             yy += 24.5;
         }
-        caja(g, E[C_OBS], yy, 90.5, 21, GUINDA, null, 0);
+        caja(g, E[C_OBS], yy, 90.5, 21, GUINDA, GRILLA, FINO);
         texto(g, num(r.procesadoDia()), E[C_OBS] + 2, yy, 54, 21, 0, true, 7.9f, BLANCO, 0);
         texto(g, "JABAS", E[C_OBS] + 36, yy, 52, 21, 2, false, 7.9f, BLANCO, 0);
         return Math.max(y, yy + 21);
@@ -328,11 +345,11 @@ public final class ReporteVidRenderer {
             texto(g, s.supervisor(), 80, y, 99.5, h, 1, true, 6.6f, NEGRO, 0);
             caja(g, E[C_MODULO], y, 70, h, ROSA, null, 0);
             texto(g, s.modulo(), E[C_MODULO], y, 70, h, 1, false, FUENTE_DATO, NEGRO, 0);
-            caja(g, E[C_PERSONAS], y, 89.5, h, ROSA_FUERTE, null, 0);
+            caja(g, E[C_PERSONAS], y, 89.5, h, ROSA_FUERTE, GRILLA, FINO);
             texto(g, mayus(s.variedades()), E[C_PERSONAS], y, 89.5, h, 1, true, 6.6f, NEGRO, 0);
-            caja(g, E[C_JABAS], y, 73.5, h, ROSA, null, 0);
+            caja(g, E[C_JABAS], y, 73.5, h, ROSA, GRILLA, FINO);
             texto(g, plano(s.jabas()), E[C_JABAS], y, 73.5, h, 1, false, FUENTE_DATO, NEGRO, 0);
-            caja(g, E[C_TOTAL], y, 79, h, ROSA, null, 0);
+            caja(g, E[C_TOTAL], y, 79, h, ROSA, GRILLA, FINO);
             texto(g, "JABAS", E[C_TOTAL], y, 79, h, 1, true, 6.6f, NEGRO, 0);
             // contorno grueso del modulo, como en la plantilla
             caja(g, E[C_MODULO], y, 70, h, null, NEGRO, 1.0);
@@ -340,7 +357,9 @@ public final class ReporteVidRenderer {
         }
 
         double yt = y + 24;
-        caja(g, E[C_PERSONAS], yt, E[C_ACUM] - E[C_PERSONAS], 12, ROSA, ROSA_BORDE, 0.6);
+        caja(g, E[C_PERSONAS], yt, 89.5, 12, ROSA, GRILLA, FINO);
+        caja(g, E[C_JABAS], yt, 73.5, 12, ROSA, GRILLA, FINO);
+        caja(g, E[C_TOTAL], yt, 79, 12, ROSA, GRILLA, FINO);
         texto(g, "TOTAL", E[C_PERSONAS], yt, 89.5, 12, 1, true, 6.6f, NEGRO, 0);
         texto(g, plano(r.totalSupervisores()), E[C_JABAS], yt, 73.5, 12, 1, false, 6.8f, NEGRO, 0);
         texto(g, "JABAS", E[C_TOTAL], yt, 79, 12, 1, true, 6.6f, NEGRO, 0);
@@ -356,6 +375,25 @@ public final class ReporteVidRenderer {
             return f.observacion().strip();
         }
         return f.almuerzo() ? "ALMUERZO" : "";
+    }
+
+    /** Lineas que van en negrita en la plantilla (cierre de proceso y almuerzo del personal). */
+    private static boolean lineaDestacada(String l) {
+        String u = l.stripLeading().toUpperCase(Locale.ROOT);
+        return u.startsWith("ALMUERZO DEL PERSONAL") || u.startsWith("FIN DE PROCESO");
+    }
+
+    /** Observacion centrada en la celda; las lineas de cierre/almuerzo salen en negrita. */
+    private static void observacion(Graphics2D g, String s, double x, double y, double w, double h) {
+        if (s == null || s.isEmpty()) {
+            return;
+        }
+        List<String> lineas = envolver(g, s, REGULAR.deriveFont(FUENTE_OBS), w);
+        double arriba = y + (h - lineas.size() * LINEA_OBS) / 2;
+        for (int i = 0; i < lineas.size(); i++) {
+            String l = lineas.get(i);
+            texto(g, l, x, arriba + i * LINEA_OBS, w + 8, LINEA_OBS, 1, lineaDestacada(l), FUENTE_OBS, NEGRO, 0);
+        }
     }
 
     private static int lineasObs(Graphics2D g, FilaModulo f) {

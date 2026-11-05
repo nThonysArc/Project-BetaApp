@@ -35,4 +35,16 @@ public class ProcesoDiario extends Auditable {
     @Column(name = "estado", nullable = false)
     @Builder.Default
     private EstadoProceso estado = EstadoProceso.ABIERTO;
+
+    /** Jabas que se proyecta procesar en el dia (plantilla Vid). null = sin proyeccion registrada. */
+    @Column(name = "proyeccion_jabas", precision = 10, scale = 0)
+    private java.math.BigDecimal proyeccionJabas;
+
+    /** Jabas que quedaron de dias previos (stock digitado a mano). null = sin dato: el reporte lo deduce del historial. */
+    @Column(name = "stock_anterior_jabas", precision = 10, scale = 0)
+    private java.math.BigDecimal stockAnteriorJabas;
+
+    /** Dia al que corresponde ese stock (por defecto, el dia anterior al proceso). */
+    @Column(name = "stock_anterior_fecha")
+    private LocalDate stockAnteriorFecha;
 }

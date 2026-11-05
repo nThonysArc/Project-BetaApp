@@ -79,13 +79,38 @@ public final class AvanceVid {
      * @param ingresoDia         jabas que ingresaron este dia (la "proyeccion" del encabezado)
      * @param ingresoAnterior    jabas ingresadas en los dias previos de la campana
      * @param acumuladoAnterior  jabas procesadas en los dias previos de la campana
+     * @param proyeccion         jabas proyectadas para el dia (digitadas con la materia prima); null = no se
+     *                           ingreso y el encabezado muestra el ingreso del dia, como antes
+     * @param stockAnterior      stock digitado a mano que quedo de un dia previo; null = se deduce del historial
+     *                           (ingresado - procesado en dias anteriores)
+     * @param stockAnteriorFecha dia al que corresponde ese stock (solo para mostrarlo)
      */
     public record Contexto(
             LocalDate fechaProceso,
             BigDecimal ingresoDia,
             BigDecimal ingresoAnterior,
-            BigDecimal acumuladoAnterior
+            BigDecimal acumuladoAnterior,
+            BigDecimal proyeccion,
+            BigDecimal stockAnterior,
+            LocalDate stockAnteriorFecha
     ) {
+        /** Sin proyeccion ni stock digitados (mantiene el comportamiento anterior). */
+        public Contexto(LocalDate fechaProceso, BigDecimal ingresoDia, BigDecimal ingresoAnterior,
+                        BigDecimal acumuladoAnterior) {
+            this(fechaProceso, ingresoDia, ingresoAnterior, acumuladoAnterior, null, null, null);
+        }
+
+        /** Con proyeccion pero sin stock digitado. */
+        public Contexto(LocalDate fechaProceso, BigDecimal ingresoDia, BigDecimal ingresoAnterior,
+                        BigDecimal acumuladoAnterior, BigDecimal proyeccion) {
+            this(fechaProceso, ingresoDia, ingresoAnterior, acumuladoAnterior, proyeccion, null, null);
+        }
+
+        /** Stock que quedo de dias previos: el digitado a mano manda; si no hay, se deduce del historial. */
+        BigDecimal stockAnteriorEfectivo() {
+            return stockAnterior != null ? stockAnterior : ingresoAnteriorNz().subtract(acumuladoAnteriorNz());
+        }
+
         BigDecimal ingresoDiaNz() {
             return ingresoDia == null ? BigDecimal.ZERO : ingresoDia;
         }
@@ -133,6 +158,9 @@ public final class AvanceVid {
     public record Resultado(
             List<BloqueHora> bloques,
             BigDecimal proyeccion,
+            BigDecimal ingresoDia,
+            BigDecimal stockAnterior,
+            LocalDate stockAnteriorFecha,
             BigDecimal procesadoDia,
             BigDecimal acumuladoAnterior,
             BigDecimal totalAcumulado,
@@ -198,11 +226,15 @@ public final class AvanceVid {
         }
 
         BigDecimal totalAcumulado = ctx.acumuladoAnteriorNz().add(procesado);
-        BigDecimal stock = ctx.ingresoAnteriorNz().add(ctx.ingresoDiaNz()).subtract(totalAcumulado);
+        BigDecimal stockAnterior = ctx.stockAnteriorEfectivo();
+        BigDecimal stock = stockAnterior.add(ctx.ingresoDiaNz()).subtract(procesado);
 
         return new Resultado(
                 bloques,
+                ctx.proyeccion() != null ? ctx.proyeccion() : ctx.ingresoDiaNz(),
                 ctx.ingresoDiaNz(),
+                stockAnterior,
+                ctx.stockAnterior() != null ? ctx.stockAnteriorFecha() : null,
                 procesado,
                 ctx.acumuladoAnteriorNz(),
                 totalAcumulado,
