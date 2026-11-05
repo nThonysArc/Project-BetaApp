@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import pe.betaagroindustrial.avance.common.exception.BusinessRuleException;
 import pe.betaagroindustrial.avance.common.exception.ResourceNotFoundException;
 import pe.betaagroindustrial.avance.maquina.Maquina;
 import pe.betaagroindustrial.avance.proceso.ProcesoDiario;
@@ -67,6 +68,33 @@ public class ReporteImagenService {
         }
 
         return ReporteExcelRenderer.renderizarPng(construirDatos(proceso), ESCALA);
+    }
+
+    /**
+     * Libro de Excel con el mismo diseno del reporte (solo Arandano por ahora). Datos base editables y
+     * totales como formulas, para poder seguir trabajando el avance aunque el sistema no este disponible.
+     */
+    @Transactional(readOnly = true)
+    public byte[] generarXlsx(Long procesoDiarioId) {
+        ProcesoDiario proceso = procesoDiarioRepository.findById(procesoDiarioId)
+                .orElseThrow(() -> ResourceNotFoundException.of("ProcesoDiario", procesoDiarioId));
+        if (AvanceVidService.usaPlantillaVid(proceso)) {
+            throw new BusinessRuleException("La exportacion a Excel aun no esta disponible para este producto (solo Arandano).");
+        }
+        return ReporteXlsxRenderer.renderizar(construirDatos(proceso));
+    }
+
+    /** Nombre del archivo: "AVANCE POR HORA PROCESO ARANDANO FRESCO 2026-11-05.xlsx" (sin tildes ni caracteres raros). */
+    @Transactional(readOnly = true)
+    public String nombreArchivoXlsx(Long procesoDiarioId) {
+        ProcesoDiario proceso = procesoDiarioRepository.findById(procesoDiarioId)
+                .orElseThrow(() -> ResourceNotFoundException.of("ProcesoDiario", procesoDiarioId));
+        String producto = Normalizer.normalize(proceso.getCampana().getProducto().getNombre(), Normalizer.Form.NFD)
+                .replaceAll("\\p{M}", "")
+                .replaceAll("[^A-Za-z0-9 ]", " ")
+                .trim().replaceAll("\\s+", " ")
+                .toUpperCase(Locale.ROOT);
+        return "AVANCE POR HORA PROCESO " + producto + " " + proceso.getFecha() + ".xlsx";
     }
 
     /**

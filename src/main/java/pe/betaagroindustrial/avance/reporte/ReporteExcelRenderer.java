@@ -68,22 +68,22 @@ public final class ReporteExcelRenderer {
     // ---------- Geometria (pixeles del Excel original) ----------
     private static final double ANCHO = 886;
     /** Bordes verticales de las 13 columnas de la tabla principal. */
-    private static final double[] C = {41, 92, 144, 218, 258, 318, 366, 417, 479, 541, 593, 655, 692, 885};
-    private static final int HORA = 0, FECHA = 1, VARIEDAD = 2, JABAS = 3, PESO_VIAJE = 4, PESO_MAQ = 5,
+    static final double[] C = {41, 92, 144, 218, 258, 318, 366, 417, 479, 541, 593, 655, 692, 885};
+    static final int HORA = 0, FECHA = 1, VARIEDAD = 2, JABAS = 3, PESO_VIAJE = 4, PESO_MAQ = 5,
             TOTAL_HORA = 6, ACUM = 7, MAQUINA = 8, KATO = 9, EMPAC = 10, KG_EMP = 11, OBS = 12;
-    private static final double ALTO_ENCABEZADO = 21;
-    private static final double ALTO_FILA = 20;
+    static final double ALTO_ENCABEZADO = 21;
+    static final double ALTO_FILA = 20;
     private static final double ALTO_MIN_BLOQUE = 34;
-    private static final double ALTO_PAUSA = 38;
+    static final double ALTO_PAUSA = 38;
     private static final double INTERLINEADO_OBS = 9.6;
-    private static final double ALTO_FILA_PIE = 14.2;
+    static final double ALTO_FILA_PIE = 14.2;
     private static final double MIN_Y_TABLA = 146;
 
     // ---------- Tipografia ----------
     /** Condensacion horizontal del Excel original respecto a la fuente natural. */
     private static final double K = 0.751;
     private static final double ALTURA_MAYUSCULA = 0.644;
-    private static final double T_TITULO = 21.3, T_ETIQUETA = 12.2, T_FECHA = 11.2, T_ENCABEZADO = 10.7,
+    static final double T_TITULO = 21.3, T_ETIQUETA = 12.2, T_FECHA = 11.2, T_ENCABEZADO = 10.7,
             T_CUERPO = 9.6, T_OBS = 8.0, T_PIE = 10.6, T_MINI = 9.2, T_HORA = 11.0, T_MP = 9.4;
 
     private static final Font BASE_REGULAR = cargarFuente("Carlito-Regular.ttf", Font.PLAIN);
@@ -92,7 +92,7 @@ public final class ReporteExcelRenderer {
 
     private static final int IZQ = 0, CENTRO = 1, DER = 2;
 
-    private static final String[] ENCABEZADOS = {
+    static final String[] ENCABEZADOS = {
             "HORA", "FECHA DE\nCOSECHA", "VARIEDAD", "JABAS", "PESO POR VIAJE", "PESO POR\nMAQUINA",
             "TOTAL PESO\nPOR HORA", "ACUM. X HORA", "MAQUINA", "KATO´S", "EMPACADORES", "KG/EMP", "OBSERVACION"
     };
@@ -116,6 +116,16 @@ public final class ReporteExcelRenderer {
     public static double escalaSegura(double ancho, double alto, double escala) {
         double maxPorTope = Math.sqrt(MAX_PIXELES / (ancho * alto));
         return Math.max(ESCALA_MINIMA, Math.min(escala, maxPorTope));
+    }
+
+    /** Calcula posiciones y alturas del reporte sin dibujar (lo usa tambien la exportacion a Excel). */
+    static Diseno disenar(ReporteDatos datos) {
+        BufferedImage medida = new BufferedImage(1, 1, BufferedImage.TYPE_INT_RGB);
+        Graphics2D gm = medida.createGraphics();
+        configurar(gm);
+        Diseno diseno = new Diseno(datos, new Pintor(gm));
+        gm.dispose();
+        return diseno;
     }
 
     public static byte[] renderizarPng(ReporteDatos datos, double escala) {
@@ -149,7 +159,7 @@ public final class ReporteExcelRenderer {
     // Layout: calcula alturas y posiciones antes de dibujar
     // =====================================================================
 
-    private static final class Grupo {
+    static final class Grupo {
         Long maquinaId;
         List<FilaReporte> filas = new ArrayList<>();
         String observacion;
@@ -159,7 +169,7 @@ public final class ReporteExcelRenderer {
         boolean almuerzo;
     }
 
-    private static final class Bloque {
+    static final class Bloque {
         CorteReporte corte;
         int numero;
         /** Barra "ALMUERZO DEL PERSONAL": todas las maquinas pararon, no es una hora de produccion. */
@@ -171,7 +181,7 @@ public final class ReporteExcelRenderer {
         BigDecimal acumulado = BigDecimal.ZERO;
     }
 
-    private static final class Tramo {
+    static final class Tramo {
         final String supervisor;
         final LocalTime inicio;
         LocalTime fin;
@@ -183,7 +193,7 @@ public final class ReporteExcelRenderer {
         }
     }
 
-    private static final class ResumenMaquina {
+    static final class ResumenMaquina {
         String nombre;
         BigDecimal jabas = BigDecimal.ZERO;
         BigDecimal kilos = BigDecimal.ZERO;
@@ -192,7 +202,7 @@ public final class ReporteExcelRenderer {
         double alto;
     }
 
-    private static final class Diseno {
+    static final class Diseno {
         final ReporteDatos d;
         final List<Bloque> bloques = new ArrayList<>();
         final List<ResumenMaquina> resumen = new ArrayList<>();
@@ -859,34 +869,34 @@ public final class ReporteExcelRenderer {
         return df.format(valor == null ? BigDecimal.ZERO : valor);
     }
 
-    private static BigDecimal nz(BigDecimal v) {
+    static BigDecimal nz(BigDecimal v) {
         return v == null ? BigDecimal.ZERO : v;
     }
 
-    private static boolean vacio(String s) {
+    static boolean vacio(String s) {
         return s == null || s.isBlank();
     }
 
-    private static boolean iguales(String a, String b) {
+    static boolean iguales(String a, String b) {
         return a == null ? b == null : a.equals(b);
     }
 
-    private static String mayus(String s) {
+    static String mayus(String s) {
         return s == null ? "" : s.toUpperCase(Locale.forLanguageTag("es-PE"));
     }
 
     /** "9:40" (sin cero a la izquierda en la hora, como en el Excel). */
-    private static String hora(LocalTime t) {
+    static String hora(LocalTime t) {
         return t == null ? "" : t.getHour() + ":" + String.format("%02d", t.getMinute());
     }
 
     /** "7/10/2026". */
-    private static String fechaLarga(LocalDate f) {
+    static String fechaLarga(LocalDate f) {
         return f == null ? "" : f.getDayOfMonth() + "/" + f.getMonthValue() + "/" + f.getYear();
     }
 
     /** "7-Oct". */
-    private static String fechaCorta(LocalDate f) {
+    static String fechaCorta(LocalDate f) {
         return f == null ? "" : f.getDayOfMonth() + "-" + MESES[f.getMonthValue() - 1];
     }
 }
