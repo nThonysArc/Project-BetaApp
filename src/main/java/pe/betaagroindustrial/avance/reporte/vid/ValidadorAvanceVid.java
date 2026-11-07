@@ -55,9 +55,10 @@ public final class ValidadorAvanceVid {
                                 .formatted(h.numero(), min, h.inicio().format(HM), h.fin().format(HM))));
             }
             if (previa != null && !previa.fin().equals(h.inicio())) {
+                String cual = almuerzoTotal ? "El almuerzo" : "La hora " + h.numero();
                 out.add(new Advertencia(h.numero(), null, HUECO_HORARIO,
-                        "La hora %d empieza a las %s pero la anterior termino a las %s."
-                                .formatted(h.numero(), h.inicio().format(HM), previa.fin().format(HM))));
+                        "%s empieza a las %s pero la anterior termino a las %s."
+                                .formatted(cual, h.inicio().format(HM), previa.fin().format(HM))));
             }
 
             if (h.totalAjustado() != null && h.totalAjustado().compareTo(h.totalCalculado()) != 0) {

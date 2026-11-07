@@ -34,6 +34,9 @@ public enum Permiso {
     CORTES_AJUSTAR_TOTALES("Cortes por hora", "Ajustar totales",
             "Reemplazar manualmente los totales calculados de un corte", "CORTES_EDITAR"),
 
+    CORTES_ELIMINAR("Cortes por hora", "Eliminar",
+            "Eliminar un corte de un proceso abierto (exige motivo y queda auditado)", "CORTES_VER"),
+
     REPORTE_VER("Reporte", "Ver y descargar imagen", "Generar la imagen del reporte de avance",
             "PROCESOS_VER", "CORTES_VER"),
 

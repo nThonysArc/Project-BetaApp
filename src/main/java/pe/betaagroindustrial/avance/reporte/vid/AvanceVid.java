@@ -147,6 +147,10 @@ public final class AvanceVid {
             BigDecimal acumulado,
             List<FilaModulo> filas
     ) {
+        /** Todos los modulos salieron a almorzar: se dibuja la barra "ALMUERZO DEL PERSONAL", sin numero de hora. */
+        public boolean todoAlmuerzo() {
+            return !filas.isEmpty() && filas.stream().allMatch(FilaModulo::almuerzo);
+        }
     }
 
     public record ProcesadoDia(LocalDate fecha, BigDecimal jabas) {
@@ -175,6 +179,20 @@ public final class AvanceVid {
     }
 
     public static final String SIN_SUPERVISOR = "SIN SUPERVISOR";
+
+    /**
+     * Numera las horas de produccion 1, 2, 3... La hora en que TODO el personal almuerza no es produccion:
+     * no ocupa numero (queda en 0) y la siguiente hora continua la cuenta.
+     */
+    public static List<HoraVid> numerar(List<HoraVid> horas) {
+        List<HoraVid> out = new ArrayList<>();
+        int n = 0;
+        for (HoraVid h : horas) {
+            int numero = h.todoAlmuerzo() ? 0 : ++n;
+            out.add(new HoraVid(numero, h.inicio(), h.fin(), h.fechaCosecha(), h.totalAjustado(), h.modulos()));
+        }
+        return out;
+    }
 
     // ----------------------------------------------------------------------
     // Calculo

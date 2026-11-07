@@ -97,7 +97,7 @@ public class AvanceVidService {
         Long campanaId = proceso.getCampana().getId();
 
         List<Corte> cortes = corteRepository.findByProcesoDiarioIdOrderByNumeroCorteAsc(procesoId);
-        List<HoraVid> horas = cortes.stream().map(this::mapearHora).toList();
+        List<HoraVid> horas = AvanceVid.numerar(cortes.stream().map(this::mapearHora).toList());
 
         BigDecimal ingresoDia = materiaPrimaPlanRepository.findByProcesoDiarioIdOrderByOrdenAsc(procesoId).stream()
                 .map(MateriaPrimaPlan::getJabasPlan)

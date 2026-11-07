@@ -107,6 +107,27 @@ class AvanceVidTest {
     }
 
     @Test
+    void laHoraEnQueTodoElPersonalAlmuerzaNoOcupaNumeroYLaSiguienteContinuaLaCuenta() {
+        List<HoraVid> horas = AvanceVid.numerar(List.of(
+                hora(1, t(8, 0), t(9, 0), D28, modulo(1, 10, 100, "ANA", null)),
+                hora(2, t(9, 0), t(10, 0), D28, almuerzo(1, 10), almuerzo(2, 10)),
+                hora(3, t(10, 0), t(11, 0), D28, modulo(1, 10, 120, "ANA", null))));
+
+        assertEquals(List.of(1, 0, 2), horas.stream().map(HoraVid::numero).toList());
+    }
+
+    @Test
+    void unModuloEnAlmuerzoNoHaceDeLaHoraUnaBarraPeroSiLaHoraEntera() {
+        Resultado r = AvanceVid.calcular(List.of(
+                hora(1, t(8, 0), t(9, 0), D28, almuerzo(1, 10), modulo(2, 10, 100, "ANA", null)),
+                hora(2, t(9, 0), t(10, 0), D28, almuerzo(1, 10), almuerzo(2, 10))), ctx(1000, 0, 0));
+
+        assertEquals(false, r.bloques().get(0).todoAlmuerzo());
+        assertEquals(true, r.bloques().get(1).todoAlmuerzo());
+        assertEquals(n(100), r.procesadoDia()); // el almuerzo no suma produccion
+    }
+
+    @Test
     void elStockDigitadoAManoReemplazaAlDeducidoDelHistorial() {
         // El historial diria 500 - 200 = 300, pero el supervisor digito 700 (del 03/11): manda lo digitado.
         LocalDate fecha = LocalDate.of(2026, 11, 4);

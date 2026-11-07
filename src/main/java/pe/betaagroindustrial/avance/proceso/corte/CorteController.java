@@ -21,6 +21,9 @@ import java.util.List;
  *  4. PUT  /{corteId}             -> corrige un corte existente (libre si el
  *                                    proceso esta ABIERTO, exige motivo si CERRADO)
  *
+ *  5. DELETE /{corteId}?motivo=  -> elimina un corte (solo con el proceso ABIERTO; exige motivo y
+ *                                    el permiso CORTES_ELIMINAR; queda auditado)
+ *
  * El cierre real ocurre a nivel de ProcesoDiario
  * (ver ProcesoDiarioController POST /{id}/cerrar), no por corte individual.
  */
@@ -65,5 +68,15 @@ public class CorteController {
                                                       @Valid @RequestBody CorteRequest request,
                                                       Authentication authentication) {
         return ResponseEntity.ok(corteService.actualizar(corteId, request, authentication.getName()));
+    }
+
+    @PreAuthorize("hasAuthority('PERM_CORTES_ELIMINAR')")
+    @DeleteMapping("/{corteId}")
+    public ResponseEntity<Void> eliminar(@PathVariable Long procesoDiarioId,
+                                         @PathVariable Long corteId,
+                                         @RequestParam String motivo,
+                                         Authentication authentication) {
+        corteService.eliminar(procesoDiarioId, corteId, motivo, authentication.getName());
+        return ResponseEntity.noContent().build();
     }
 }

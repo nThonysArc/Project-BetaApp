@@ -65,6 +65,7 @@ public class AuditoriaEdicion {
     public enum TipoCambio {
         EDICION_INPUT,
         AJUSTE_MANUAL,
-        RECALCULO
+        RECALCULO,
+        ELIMINACION
     }
 }

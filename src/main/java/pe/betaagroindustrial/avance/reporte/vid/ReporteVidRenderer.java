@@ -211,17 +211,19 @@ public final class ReporteVidRenderer {
 
         double y = y0 + ALTO_ENCABEZADO;
         List<Double> cortes = new ArrayList<>();
+        // Tramos de linea vertical que NO se dibujan (celdas combinadas): {indice de columna, y1, y2}
+        List<double[]> omitir = new ArrayList<>();
         double yUltimo = y;
         for (BloqueHora b : r.bloques()) {
             yUltimo = y;
-            y = bloque(g, b, y);
+            y = bloque(g, b, y, omitir);
             cortes.add(y);
         }
 
         // La rejilla se dibuja DESPUES de todos los rellenos: si no, el relleno de la hora siguiente
         // tapa la mitad del borde de la anterior (asi se "comian" los marcos).
         for (int c = 1; c < E.length - 1; c++) {
-            linea(g, E[c], y0, E[c], y, GRILLA, FINO, false);
+            lineaVertical(g, c, y0, y, omitir);
         }
         linea(g, x0, y0, ANCHO, y0, GRILLA, FINO, false);                 // borde superior
         linea(g, ANCHO, y0, ANCHO, y, GRILLA, FINO, false);               // borde derecho
@@ -236,7 +238,53 @@ public final class ReporteVidRenderer {
         return y;
     }
 
-    private static double bloque(Graphics2D g, BloqueHora b, double y) {
+    /** Linea vertical de la columna c entre y1 y y2, saltando los tramos combinados (barra / recuadro de almuerzo). */
+    private static void lineaVertical(Graphics2D g, int c, double y1, double y2, List<double[]> omitir) {
+        List<double[]> huecos = new ArrayList<>();
+        for (double[] o : omitir) {
+            if ((int) o[0] == c) {
+                huecos.add(o);
+            }
+        }
+        huecos.sort((p, q) -> Double.compare(p[1], q[1]));
+        double desde = y1;
+        for (double[] h : huecos) {
+            if (h[1] > desde) {
+                linea(g, E[c], desde, E[c], h[1], GRILLA, FINO, false);
+            }
+            desde = Math.max(desde, h[2]);
+        }
+        if (desde < y2) {
+            linea(g, E[c], desde, E[c], y2, GRILLA, FINO, false);
+        }
+    }
+
+    /** Almuerzo GENERAL: un solo recuadro combinado desde la columna HORA hasta OBSERVACIONES, sin numero de hora. */
+    private static double recuadroAlmuerzoGeneral(Graphics2D g, BloqueHora b, double y, List<double[]> omitir) {
+        List<String> lineas = new ArrayList<>();
+        lineas.add("ALMUERZO DE PERSONAL");
+        for (FilaModulo f : b.filas()) {
+            if (f.observacion() != null && !f.observacion().isBlank() && !lineas.contains(f.observacion().strip())) {
+                lineas.add(f.observacion().strip());
+            }
+        }
+        double h = Math.max(MIN_BLOQUE + 4, lineas.size() * LINEA_OBS + 20);
+        caja(g, E[0], y, ANCHO - E[0], h, ROSA, null, 0);
+        double arriba = y + (h - lineas.size() * LINEA_OBS) / 2;
+        for (int i = 0; i < lineas.size(); i++) {
+            texto(g, lineas.get(i), E[0], arriba + i * LINEA_OBS, ANCHO - E[0], LINEA_OBS, 1,
+                    i == 0 || lineaDestacada(lineas.get(i)), i == 0 ? 8.6f : FUENTE_OBS, NEGRO, 0);
+        }
+        for (int c = C_MODULO; c < E.length - 1; c++) {
+            omitir.add(new double[]{c, y, y + h});
+        }
+        return y + h;
+    }
+
+    private static double bloque(Graphics2D g, BloqueHora b, double y, List<double[]> omitir) {
+        if (b.todoAlmuerzo()) {
+            return recuadroAlmuerzoGeneral(g, b, y, omitir);
+        }
         List<FilaModulo> filas = b.filas();
         double[] alturas = new double[Math.max(1, filas.size())];
         double total = 0;
@@ -269,10 +317,16 @@ public final class ReporteVidRenderer {
             FilaModulo f = filas.get(i);
             double h = alturas[i];
             texto(g, f.modulo(), E[C_MODULO], yy, E[C_PERSONAS] - E[C_MODULO], h, 1, false, FUENTE_DATO, NEGRO, 0);
-            texto(g, String.valueOf(f.personas()), E[C_PERSONAS], yy, E[C_JABAS] - E[C_PERSONAS], h, 1, false, FUENTE_DATO, NEGRO, 0);
-            texto(g, plano(f.jabas()), E[C_JABAS], yy, E[C_TOTAL] - E[C_JABAS], h, 1, false, FUENTE_DATO, NEGRO, 0);
-            texto(g, f.rendimiento() == null ? "0" : f.rendimiento().toPlainString(),
-                    E[C_REND], yy, E[C_OBS] - E[C_REND], h, 1, false, FUENTE_DATO, NEGRO, 0);
+            if (f.almuerzo()) {
+                // Este modulo salio a almorzar: recuadro combinado PERSONAS + JABAS/HORA, sin cifras.
+                texto(g, "ALMUERZO DE PERSONAL", E[C_PERSONAS], yy, E[C_TOTAL] - E[C_PERSONAS], h, 1, true, FUENTE_DATO, NEGRO, 0);
+                omitir.add(new double[]{C_JABAS, yy, yy + h});
+            } else {
+                texto(g, String.valueOf(f.personas()), E[C_PERSONAS], yy, E[C_JABAS] - E[C_PERSONAS], h, 1, false, FUENTE_DATO, NEGRO, 0);
+                texto(g, plano(f.jabas()), E[C_JABAS], yy, E[C_TOTAL] - E[C_JABAS], h, 1, false, FUENTE_DATO, NEGRO, 0);
+                texto(g, f.rendimiento() == null ? "0" : f.rendimiento().toPlainString(),
+                        E[C_REND], yy, E[C_OBS] - E[C_REND], h, 1, false, FUENTE_DATO, NEGRO, 0);
+            }
             observacion(g, textoObs(f), E[C_OBS] + 4, yy, E[C_OBS + 1] - E[C_OBS] - 8, h);
 
             if (i < filas.size() - 1) {
@@ -291,8 +345,15 @@ public final class ReporteVidRenderer {
         // Como en la plantilla: TOTAL = ultima hora; ACUMULADO ANTERIOR = lo acumulado hasta la hora previa;
         // TOTAL ACUMULADO = procesado del dia.
         List<BloqueHora> bq = r.bloques();
-        BigDecimal ultimaHora = bq.isEmpty() ? BigDecimal.ZERO : bq.get(bq.size() - 1).totalHora();
-        BigDecimal acumuladoPrevio = bq.size() < 2 ? BigDecimal.ZERO : bq.get(bq.size() - 2).acumulado();
+        // La barra de almuerzo no es una hora de produccion: TOTAL es la ultima hora que si produjo.
+        BloqueHora ultimaProd = null;
+        for (BloqueHora b : bq) {
+            if (!b.todoAlmuerzo()) {
+                ultimaProd = b;
+            }
+        }
+        BigDecimal ultimaHora = ultimaProd == null ? BigDecimal.ZERO : ultimaProd.totalHora();
+        BigDecimal acumuladoPrevio = ultimaProd == null ? BigDecimal.ZERO : ultimaProd.acumulado().subtract(ultimaProd.totalHora());
         String[][] filas = {
                 {"TOTAL", num(ultimaHora)},
                 {"ACUMULADO ANTERIOR", num(acumuladoPrevio)},
@@ -374,7 +435,7 @@ public final class ReporteVidRenderer {
         if (f.observacion() != null && !f.observacion().isBlank()) {
             return f.observacion().strip();
         }
-        return f.almuerzo() ? "ALMUERZO" : "";
+        return "";
     }
 
     /** Lineas que van en negrita en la plantilla (cierre de proceso y almuerzo del personal). */

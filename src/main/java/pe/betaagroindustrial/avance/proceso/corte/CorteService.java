@@ -226,6 +226,51 @@ public class CorteService {
     }
 
     // ==========================================================
+    // 3b. ELIMINAR CORTE
+    // ==========================================================
+
+    /**
+     * Elimina un corte (con su detalle y supervisores). Reglas:
+     *  - el proceso debe estar ABIERTO (si ya cerro, primero se reabre);
+     *  - el motivo es obligatorio y se guarda en la auditoria junto con lo que se borro;
+     *  - los cortes posteriores con ajuste manual quedan marcados "requiere revision", porque el
+     *    acumulado que tomaron como referencia cambio.
+     */
+    @Transactional
+    public void eliminar(Long procesoDiarioId, Long corteId, String motivo, String emailUsuario) {
+        if (motivo == null || motivo.isBlank()) {
+            throw new BusinessRuleException("Indica el motivo por el que se elimina el corte.");
+        }
+        Corte corte = corteRepository.findById(corteId)
+                .orElseThrow(() -> ResourceNotFoundException.of("Corte", corteId));
+        if (!corte.getProcesoDiario().getId().equals(procesoDiarioId)) {
+            throw ResourceNotFoundException.of("Corte", corteId);
+        }
+        if (corte.getProcesoDiario().getEstado() == EstadoProceso.CERRADO) {
+            throw new BusinessRuleException(
+                    "El proceso diario esta cerrado. Reabrelo para poder eliminar un corte.");
+        }
+        Usuario usuario = usuarioRepository.findByEmail(emailUsuario)
+                .orElseThrow(() -> ResourceNotFoundException.of("Usuario", emailUsuario));
+
+        auditoriaEdicionRepository.save(AuditoriaEdicion.builder()
+                .entidad("CORTE")
+                .entidadId(corte.getId())
+                .campo("corte")
+                .valorAnterior("numero=%s, horario=%s-%s, peso=%s, jabas=%s".formatted(
+                        corte.getNumeroCorte(), corte.getHoraInicio(), corte.getHoraFin(),
+                        corte.getPesoTotalEfectivo(), corte.getJabasTotalEfectivo()))
+                .valorNuevo("eliminado")
+                .tipoCambio(AuditoriaEdicion.TipoCambio.ELIMINACION)
+                .motivo(motivo.strip())
+                .usuario(usuario)
+                .build());
+
+        marcarRequiereRevisionAguasAbajo(corte);
+        corteRepository.delete(corte);
+    }
+
+    // ==========================================================
     // 4. LISTAR / OBTENER
     // ==========================================================
 

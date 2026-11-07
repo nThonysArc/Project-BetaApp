@@ -16,7 +16,9 @@ public final class PlantillasPermisos {
 
     public static Set<Permiso> de(Rol rol) {
         return switch (rol) {
-            case SUPER_ADMIN, ADMIN -> EnumSet.allOf(Permiso.class);
+            case SUPER_ADMIN -> EnumSet.allOf(Permiso.class);
+            // Eliminar cortes es destructivo: el super admin lo concede de forma explicita, no por rol.
+            case ADMIN -> EnumSet.complementOf(EnumSet.of(CORTES_ELIMINAR));
             case SUPERVISOR -> Permiso.expandir(EnumSet.of(
                     PROCESOS_CREAR, PROCESOS_CERRAR, MATERIA_PRIMA_VER, CORTES_CREAR, CORTES_EDITAR, REPORTE_VER));
             case OPERADOR -> Permiso.expandir(EnumSet.of(
